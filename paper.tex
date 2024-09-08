@@ -286,9 +286,9 @@ The output metavariables represent statements that still need to be proved.
 Almost all tactics operate on the first input goal $\mvar{g₁}$ and replace it with some \emph{subgoals} (or none, if the goal is solved outright), leaving $\mvar{g₂}, \dots, \mvar{gₙ}$ to be proved by subsequent tactics.
 
 Behind the scenes, a tactic assigns a proof term $eᵢ$ (possibly containing the output metavariables) to each input goal $\mvar{gᵢ}$ that is not returned as an output metavariable.
-We can therefore also view a tactic as a function of \emph{tactic contexts}.
-A tactic context $(Φ, G)$ contains a metavariable context $Φ$ and a list of goals $G$.
-When a tactic is executed with $(Φ, G)$ as input, it produces another tactic context $(Ψ, H)$ as output, where $H$ contains the output goals and $Ψ$ is the metavariable context derived from $Φ$ by adding the new output goals and assigning proof terms to input goals.
+We can therefore also view a tactic as a function of \emph{tactic states}.
+A tactic state $(Φ, G)$ contains a metavariable context $Φ$ and a list of goals $G$.
+When a tactic is executed with $(Φ, G)$ as input, it produces another tactic state $(Ψ, H)$ as output, where $H$ contains the output goals and $Ψ$ is the metavariable context derived from $Φ$ by adding the new output goals and assigning proof terms to input goals.
 
 \paragraph{Syntax}
 Expressions are produced by translating, or \emph{elaborating}, Lean code.
@@ -316,7 +316,7 @@ $Φ^{\post}$ is another metavariable context and $G^{\post}$ is a list of goals.
 We call $(Φ^{\pre}, [g^{\pre}])$ the step's \emph{pre-state} and $(Φ^{\post}, G^{\post})$ its \emph{post-state}.
 
 Note that Aesop rules always receive a single goal $g^{\pre}$ as input.
-When the tactic corresponding to a rule is run in a tactic context $(Φ,\allowbreak [g₁, \dots, gₙ])$, it receives the first goal $g₁$ as input, creates subgoals $h₁, \dots, hₘ$ (where $m$ can be zero) and returns a tactic context with goals $h₁, \dots, hₘ, g₂, \dots gₙ$.
+When the tactic corresponding to a rule is run in a tactic state $(Φ,\allowbreak [g₁, \dots, gₙ])$, it receives the first goal $g₁$ as input, creates subgoals $h₁, \dots, hₘ$ (where $m$ can be zero) and returns a tactic state with goals $h₁, \dots, hₘ, g₂, \dots gₙ$.
 In other words, the tactic replaces the first input goal with some subgoals and leaves the other input goals unchanged.
 Most Lean tactics are of this form.
 
@@ -398,7 +398,7 @@ This naive script is the input of the script optimisation procedure.
 \label{sec:equality}
 
 Before we can start optimising the script, we need one piece of infrastructure.
-Many of our optimisations will need to check whether two tactics $t₁$ and $t₂$, when run in the same tactic context $(Φ, G)$, produce the same result.
+Many of our optimisations will need to check whether two tactics $t₁$ and $t₂$, when run in the same tactic state $(Φ, G)$, produce the same result.
 This is non-trivial because even when we run the same tactic twice, the internal names of any resulting metavariables and fvars, which are produced by a global name generator, change.
 So we need a procedure that checks whether the results of $t₁$ and $t₂$ -- two tactic states $(Φ₁, G₁)$ and $(Φ₂, G₂)$ -- are equal up to internal names.
 This procedure is implemented in file \texttt{Aesop/Util/EqualUpToIds.lean}.
@@ -529,9 +529,10 @@ This yields the desired result: a partial script with holes marked by \tac{sorry
 
 % TODO check all filenames
 The static reordering algorithm is shown as Algorithm~\ref{alg:static-reordering} and implemented in \texttt{Aesop/Script/StructureStatic.lean}.
-Its main function, \textsc{reorder-static}, first sets up the \emph{tactic state}.
-This is the list of current proof goals, containing initially the pre-goal of the first step.
-We then iteratively select steps and apply them to the tactic state (simulating the effect of the step's tactic) until the tactic state becomes empty and the proof is complete.
+Its main function, \textsc{reorder-static}, first sets up $\mathit{tacticState}$.
+This variable contains the goals of the current tactic state, so we initialise it with the pre-goal of the first step.
+(For the purposes of static reordering, metavariable assignments and declarations are not essential, so $\mathit{tacticState}$ does not track the current metavariable context.)
+The remainder of the algorithm iteratively selects steps and applies them to the tactic state (simulating the effect of the step's tactic) until there are no goals left.
 
 The function \textsc{next-step}, which picks the next step to apply to a given tactic state, implements the actual reordering.
 If the first goal in the tactic state does not contain metavariables, we can pick the step that applies to this goal, since it cannot have any ordering constraints with regards to other steps.
@@ -751,6 +752,7 @@ We now consider Algorithm~\ref{alg:sscript}, which converts a sequence of steps 
 Its sole function, \textsc{sscript}, takes a sequence of steps $\mathit{steps}$, a tactic state $\mathit{ts}$, a start position $i$ and a stop position $j$.
 It returns a new tactic state and a structured script.
 The structured script corresponds to the subsequence of $\mathit{steps}$ from $i$ to $j$, and the tactic state is the tactic state that results from running this subsequence (or the corresponding structured script) on the initial tactic state $\mathit{ts}$.
+As in Section~\ref{sec:static-reordering}, we do not need to consider the tactic states' metavariable contexts, so tactic states are modelled as lists of goals.
 
 \begin{algorithm}
   \begin{algorithmic}
