@@ -914,30 +914,30 @@ The following evaluation seeks to answer two questions.
 First, what is the performance cost of script generation (with static or dynamic structuring)?
 Second, how much more effective is dynamic structuring at producing structured scripts?
 
-\begin{table*}
+\begin{table}
   \centering
-  \begin{tabular}{lcccccc}
-    \textbf{Category} & \textbf{\# Aesop calls} & \textbf{Aesop time} & \textbf{Script time} & \textbf{Script ratio} & \textbf{Avg Aesop time} & \textbf{Avg script time} \\
+  \begin{tabular}{lcccc}
+    \textbf{Category} & $\mathbf{N}$ & $\mathbf{R}$ & $\mathbf{\bar{A}}$ & $\mathbf{\bar{S}}$ \\
     \midrule
-    \multicolumn{7}{l}{\textbf{Pure static structuring}} \\
-    All calls               & TODO & TODO & TODO & TODO & TODO & TODO \\
-    $99^{\mathrm{th}}$ pctl. & TODO & TODO & TODO & TODO & TODO & TODO \\
-    $95^{\mathrm{th}}$ pctl. & TODO & TODO & TODO & TODO & TODO & TODO \\
+    \multicolumn{5}{l}{\textbf{Pure static structuring}} \\
+    All calls               & TODO & TODO & TODO & TODO \\
+    $99^{\mathrm{th}}$ pctl. & TODO & TODO & TODO & TODO \\
+    $95^{\mathrm{th}}$ pctl. & TODO & TODO & TODO & TODO \\
     \midrule
-    \multicolumn{7}{l}{\textbf{Pure dynamic structuring}} \\
-    All calls               & TODO & TODO & TODO & TODO & TODO & TODO \\
-    $99^{\mathrm{th}}$ pctl. & TODO & TODO & TODO & TODO & TODO & TODO \\
-    $95^{\mathrm{th}}$ pctl. & TODO & TODO & TODO & TODO & TODO & TODO \\
+    \multicolumn{5}{l}{\textbf{Pure dynamic structuring}} \\
+    All calls               & TODO & TODO & TODO & TODO \\
+    $99^{\mathrm{th}}$ pctl. & TODO & TODO & TODO & TODO \\
+    $95^{\mathrm{th}}$ pctl. & TODO & TODO & TODO & TODO \\
     \midrule
-    \multicolumn{7}{l}{\textbf{Optimised dynamic structuring}} \\
-    All calls               & TODO & TODO & TODO & TODO & TODO & TODO \\
-    $99^{\mathrm{th}}$ pctl. & TODO & TODO & TODO & TODO & TODO & TODO \\
-    $95^{\mathrm{th}}$ pctl. & TODO & TODO & TODO & TODO & TODO & TODO \\
+    \multicolumn{5}{l}{\textbf{Optimised dynamic structuring}} \\
+    All calls               & TODO & TODO & TODO & TODO \\
+    $99^{\mathrm{th}}$ pctl. & TODO & TODO & TODO & TODO \\
+    $95^{\mathrm{th}}$ pctl. & TODO & TODO & TODO & TODO \\
   \end{tabular}
   \medskip
   \caption{Results of the performance evaluation. All times are in seconds.}%
   \label{table:evaluation}
-\end{table*}
+\end{table}
 
 \paragraph{Performance}
 To evaluate the performance of script generation, we build Mathlib\footnote{Commit TODO, committed on TODO.} in single-threaded mode with an option that makes Aesop always generate (but not display) a script.
@@ -952,10 +952,10 @@ The last mode is currently Aesop's default.
 
 For each category, we consider three subcategories: all Aesop calls; the 99th percentile of Aesop calls with the fastest script generation and the 95th percentile.
 For each call, we record the total running time and the time spent on script generation.
-Then we report, for each subcategory, the number of Aesop calls; the total time spent by Aesop; the total time spent on script generation; the percentage of Aesop's running time spent on script generation; the average time each Aesop call took; and the average time each Aesop call spent on script generation.
+Then we report, for each subcategory, the number of Aesop calls $N$; the percentage $S$ of Aesop's running time spent on script generation; the average time $\bar{A}$ each Aesop call took; and the average time $\bar{S}$ each Aesop call spent on script generation.
 
 I ran the benchmark for each subcategory three times on an otherwise idle system with an AMD Ryzen-TODO processor.
-The variance between runs seemed low (e.g.\ for the purely static all-calls category, total Aesop time varied between TODO and TODO, and total script generation time between TODO and TODO).
+The variance between runs was low (e.g.\ for the purely static all-calls category, average Aesop time varied between TODO and TODO, and average script generation time between TODO and TODO).
 Table~\ref{table:evaluation} reports the average results of the three runs.
 
 The results show TODO.
