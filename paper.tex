@@ -99,9 +99,9 @@
 \affiliation{%
   \institution{University of Munich (LMU)}
   \department{Department of Computer Science}
-  \streetaddress{TODO}
-  \city{TODO}
-  \postcode{TODO}
+  \streetaddress{Oettingenstraße 67}
+  \city{Munich}
+  \postcode{80538}
   \country{Germany}}
 \email{jannis.limperg@lmu.de}
 \orcid{0000-0002-8861-5231}
@@ -111,7 +111,7 @@
 \section{Introduction}%
 \label{sec:intro}
 
-In interactive theorem provers, white-box proof automation tactics such as Coq's (TODO ref) auto, Isabelle's (TODO ref) auto (TODO ref) and Lean's (TODO ref) Aesop (TODO ref) provide a simple but effective and customisable way to automate straightforward proofs.
+In interactive theorem provers, white-box proof automation tactics such as Coq's~\cite{Coq} auto and sauto~\cite{sauto}, Isabelle's~\cite{Isabelle} auto~\cite{IsabelleAuto} and Lean's~\cite{Lean4} Aesop~\cite{Aesop} provide a simple but effective and customisable way to automate straightforward proofs.
 These tactics search for a proof by applying proof steps, or \emph{rules}, that often translate directly into low-level tactics of the respective prover.
 For instance, Coq's auto applies a user-specified set of lemmas recursively until it finds a complete proof (or until no more lemmas can be applied or a depth limit is reached), and each application of a lemma translates into a call to the \tac{eapply} tactic.
 Instead of a lemma, auto users can also directly specify a tactic to be tried during the search.
@@ -209,7 +209,7 @@ Human-written proofs overwhelmingly have a depth-first structure: each tactic is
 This style is supported by various structuring mechanisms in Lean's tactic language, such as the bullets in Figure~\ref{fig:big-example-optimised}.
 These focus on the first goal in the current goal list, meaning that all other goals disappear until the first goal is solved.
 I call a proof \emph{structured} if it is depth-first and uses Lean's structuring mechanisms appropriately.%
-\footnote{This terminology is only loosely related to structured proof languages such as Isar (TODO ref).}
+\footnote{This terminology is only loosely related to structured proof languages such as Isar~\cite{Isar}.}
 
 Unfortunately, when we extract the tactics from an Aesop proof tree, they are generally not in depth-first order, for two reasons.
 First, a rule can generate multiple tactics and it would be onerous to require that these are always in depth-first order.
@@ -226,7 +226,7 @@ Aesop's solution is to apply the \tac{rfl} tactic to the second goal, solving it
 The first goal, which now reads $a ∈ l → a ∈ l$, is then solved by Lean's simplifier.
 However, applying the two tactics in the opposite order would not work: the simplifier does not assign metavariables, so it makes no progress on the first goal as long as the second one has not been solved.
 In short, metavariables make tactics non-commutative.
-(This is also the reason why Aesop's proof tree cannot, in general, store the rules in depth-first order~\cite[Section~TODO]{TODO:aesop}.)
+(This is also the reason why Aesop's proof tree cannot, in general, store the rules in depth-first order~\cite[Section~4]{Aesop}.)
 
 I propose two solutions for this issue.
 The first reorders the tactics in the script statically, i.e.\ without re-executing them.
@@ -246,13 +246,13 @@ For example, tactic expressions of the form $\tacbullet \tac{rename\_i}~x₁ \do
 \medskip
 
 Concluding the paper, I evaluate the performance of script generation and the efficacy of dynamic structuring (Section~\ref{sec:evaluation}) and survey related work (Section~\ref{sec:related}).
-The described optimisation pipeline is available in mainline Aesop\footnote{\url{https://github.com/leanprover-community/aesop}} and can already be used by Mathlib (TODO ref) developers and other Lean users.
+The described optimisation pipeline is available in mainline Aesop\footnote{\url{https://github.com/leanprover-community/aesop}} and can already be used by Mathlib~\cite{Mathlib} developers and other Lean users.
 The supplement for this paper\footnote{TODO} contains the exact version of Aesop described here as well as all materials needed to reproduce the evaluation.
 
 \section{Background}%
 \label{sec:background}
 
-Lean exposes an extensive metaprogramming API (TODO ref) that is used to develop the Lean compiler itself as well as user-defined tactics such as Aesop.
+Lean exposes an extensive metaprogramming API that is used to develop the Lean compiler itself as well as user-defined tactics such as Aesop.
 In this section, I give a slightly simplified overview of the relevant metaprogramming concepts.
 
 \paragraph{Expressions and metavariables}
@@ -912,7 +912,7 @@ First, what is the performance cost of script generation (with static or dynamic
 Second, how much more effective is dynamic structuring at producing structured scripts?
 
 \paragraph{Performance}
-To evaluate the performance of script generation, we build Mathlib\footnote{Commit TODO, committed on TODO.} (TODO ref), Lean's mathematical library, in single-threaded mode with an option that makes Aesop always generate (but not display) a script.
+To evaluate the performance of script generation, we build Mathlib\footnote{Commit TODO, committed on TODO.} in single-threaded mode with an option that makes Aesop always generate (but not display) a script.
 With this option set, Aesop calls in TODO declarations time out when script generation and checking (see below) is enabled, so we increase the (deterministic) timeout for these declaration.
 We also disable script generation for TODO declarations, where it fails due to minor bugs. (TODO fix these.)
 In total, building this slightly modified version of Mathlib involves TODO Aesop calls.
@@ -981,18 +981,18 @@ As such, there is no closely related work.
 However, there have been many attempts, in various proof assistants, to optimise proofs and to transform automatically generated proofs into a more or less human-readable format.
 The challenges addressed by these projects are usually quite specific to the format of the input and output proofs, so I only mention some examples.
 
-Huang et al.\ (TODO ref) translate resolution proofs into natural deduction proofs (and later natural language proofs).
-In particular, they compress multiple natural deduction steps into one \enquote{assertion-level} step that applies a theorem or definition (as a human would).
+Huang~\cite{Huang1989,Huang1994,Huang1996} translates resolution proofs into natural deduction proofs (and later natural language proofs).
+In particular, he compresses multiple natural deduction steps into one \enquote{assertion-level} step that applies a theorem or definition.
 
-Pąk (TODO ref) optimises Mizar proofs by extracting lemmas for common deduction steps and by removing unnecessary references, assumptions, and so on.
+Pąk~\cite{Pak2015,Pak2014a,Pak2014b,Pak2013,Pak2010} optimises Mizar proofs by extracting lemmas for common deduction steps and by removing unnecessary references, assumptions, and so on.
 Most closely related to my work is an optimisation that reorders proof steps.
 However, the objective of this reordering is not to enable structuring but to produce a linear sequence in which related proof steps are as close together as possible.
-Vyskocil, Stanovský and Urban (TODO ref) also compress proofs via lemma extraction.
-A variety of tools used to improve Mizar proofs is described by Grabowski and Schwarzweller (TODO ref).
+Vyskocil, Stanovský and Urban~\cite{Vyskovil2010} also compress proofs via lemma extraction.
+A variety of tools used to improve Mizar proofs is described by Grabowski and Schwarzweller~\cite{Grabowski2009}.
 
 In the context of hammers -- systems which integrate external automated theorem provers (ATPs) with interactive proof assistants -- an important problem is the reconstruction of proofs found by the ATPs in the language of the proof assistants.
 The most popular proof reconstruction method simply passes the lemmas used in the ATP proof to a second, less sophisticated ATP implemented within the proof assistant.
-However, there have also been attempts to directly transform the ATP proof into the proof assistant's language, in Isabelle (TODO ref), Mizar (TODO ref) and HOL Light (TODO ref).
+However, there have also been attempts to directly transform the ATP proof into the proof assistant's language in HOL Light~\cite{PRocH}, Isabelle~\cite{Paulson2007,Blanchette2013a,Blanchette2013b,Blanchette2016} and Mizar~\cite{ATPMizar,MizarATP}.
 Here, the main challenge is to bridge the considerable gap between resolution proofs and the language of the respective proof assistant.
 Major issues include converting proofs by contradiction to direct proofs and encoding the skolemisation performed by ATPs.
 Some integrations also compress proofs by combining multiple proof steps performed by the ATP into one proof step of the proof assistant.
