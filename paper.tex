@@ -10,6 +10,7 @@
 \usepackage{newunicodechar}
 \usepackage[plain]{algorithm}
 \usepackage{algpseudocodex}
+\usepackage{mathtools}
 
 \bibliographystyle{ACM-Reference-Format}
 
@@ -34,6 +35,7 @@
 \newunicodechar{ₖ}{\ensuremath{_{k}}}
 \newunicodechar{α}{\ensuremath{\alpha}}
 \newunicodechar{σ}{\ensuremath{\sigma}}
+\newunicodechar{τ}{\ensuremath{\tau}}
 \newunicodechar{λ}{\ensuremath{\lambda}}
 \newunicodechar{Γ}{\ensuremath{\Gamma}}
 \newunicodechar{Δ}{\ensuremath{\Delta}}
@@ -49,8 +51,11 @@
 \newunicodechar{≔}{\ensuremath{\coloneq}}
 \newunicodechar{∧}{\ensuremath{\land}}
 \newunicodechar{∨}{\ensuremath{\lor}}
+\newunicodechar{∪}{\ensuremath{\cup}}
+\newunicodechar{∩}{\ensuremath{\cap}}
 \newunicodechar{→}{\ensuremath{\rightarrow}}
 \newunicodechar{↔}{\ensuremath{\leftrightarrow}}
+\newunicodechar{↦}{\ensuremath{\mapsto}}
 \newunicodechar{⊢}{\ensuremath{\vdash}}
 \newunicodechar{∅}{\ensuremath{\emptyset}}
 \newunicodechar{∷}{\ensuremath{\mathbin{::}}}
@@ -66,6 +71,8 @@
 \newcommand{\post}{\mathrm{post}}
 \newcommand{\tacbullet}{\vcenter{\hbox{\scalebox{.7}{$\bullet\;\;$}}}}
 \newcommand{\step}[5]{\ensuremath{(#1,\allowbreak #2,\allowbreak #3,\allowbreak #4,\allowbreak #5)}}
+\newcommand{\aeq}{\hat{≡}}
+\newcommand{\dom}{\ensuremath{\mathrm{dom}}}
 
 \algnewcommand\algorithmiclet{\textbf{let}}
 \algnewcommand\Let{\algorithmiclet{} }
@@ -401,59 +408,55 @@ Before we can start optimising the script, we need one piece of infrastructure.
 Many of our optimisations will need to check whether two tactics $t₁$ and $t₂$, when run in the same tactic state $(Φ, G)$, produce the same result.
 This is non-trivial because even when we run the same tactic twice, the internal names of any resulting metavariables and fvars, which are produced by a global name generator, change.
 So we need a procedure that checks whether the results of $t₁$ and $t₂$ -- two tactic states $(Φ₁, G₁)$ and $(Φ₂, G₂)$ -- are equal up to internal names.
-This procedure is implemented in file \texttt{Aesop/Util/EqualUpToIds.lean}.
 
-% TODO precisely specify the equality: it's structural equality up to renaming
-More precisely, the procedure checks for a variant of \emph{structural equality} which we call $≡$.
-Since $≡$ is structural, different but definitionally equal expressions are considered different: $(\Lam{x : A}{x})~a ≢ a$.
-Moreover, names of bound variables matter, so α-equivalent terms are not identified: $\Lam{x : A}{x} ≢ \Lam{y : A}{y}$.
-We choose such a strict notion of equality because it is not unreasonable for tactics to distinguish between definitionally equal or α-equivalent expressions.
-However, the procedure ignores Lean's special \enquote{implementation detail} hypotheses, which are invisible to users and do not affect most tactics.
+More precisely, we say that two expressions $e₁$ and $e₂$ are \emph{structurally equal}, $e₁ = e₂$, if $e₁$ and $e₂$ are the same expression.
+In particular, different but definitionally equal expressions are not structurally equal: $(\Lam{x : A}{x})~a ≠ a$.
+Moreover, names of bound variables matter: $\Lam{x : A}{x} ≠ \Lam{y : A}{y}$.
+This strict notion of equality is a suitable starting point because tactics may distinguish between definitionally equal or α-equivalent expressions.
 
-To implement this notion of equality, we maintain a global bijective map $M$ from (internal names of) unassigned metavariables in $Φ₁$ to (internal names of) unassigned metavariables in $Φ₂$.
-$M$ maps $\mvar{m₁}$ to $\mvar{m₂}$ if (1) $\mvar{m₁}$ and $\mvar{m₂}$ have equal local contexts and types and (2) we have previously encountered $\mvar{m₁}$ and $\mvar{m₂}$ in the same position of some expression.
-For example, when comparing expressions $f~\mvar{m₁}~\mvar{m₂}$ and $f~\mvar{m₃}~\mvar{m₄}$, we update $M$ with the mappings $M(\mvar{m₁}) ≔ \mvar{m₃}$ and $M(\mvar{m₂}) ≔ \mvar{m₄}$.
-When we later encounter $\mvar{m₁}$ again, we consider it equal to an expression $e₂$ if and only if $e₂ = M(\mvar{m₁})$.
-This scheme correctly identifies $f~\mvar{m₁}~\mvar{m₁}$ as equal to $f~\mvar{m₂}~\mvar{m₂}$ but different from $f~\mvar{m₂}~\mvar{m₃}$ (supposing that $\mvar{m₁}$, $\mvar{m₂}$ and $\mvar{m₃}$ all have equal local contexts and types).
+We then define how to check \emph{structural equality up to renaming}, written $≡$, of two tactic states $(Φ₁, G₁)$ and $(Φ₂, G₂)$.
+Throughout this procedure, we maintain a partial map $σ$ from metavariable names to metavariable names.
+A mapping $\mvar{m₁} ↦ \mvar{m₂}$ in $σ$ means that the metavariable $\mvar{m₁}$ occurring in $G₁$ (either as a goal or in the type or local context of a goal) is equal up to renaming to the metavariable $\mvar{m₂}$ occurring in $G₂$.
 
-We now consider four mutually recursive procedures that compare expressions, local contexts, unassigned metavariables and tactic states.
+To check $(Φ₁, G₁) ≡ (Φ₂, G₂)$, we iterate through $G₁$ and $G₂$, checking that each goal (unassigned metavariable) $\mvar{m₁}$ from $G₁$ is equal up to renaming to the corresponding goal $\mvar{m₂}$ from $G₂$.
+(If $G₁$ and $G₂$ have different lengths, the tactic states cannot be equal.)
 
-\paragraph{Tactic states} To compare $(Φ₁, G₁)$ and $(Φ₂, G₂)$, we first check whether $G₁$ and $G₂$ contain the same number of goals.
-If so, we compare each goal (unassigned metavariable) $\mvar{m₁}$ in $G₁$ to its counterpart $\mvar{m₂}$ in $G₂$, using $Φ₁$ as the metavariable context for $\mvar{m₁}$ and $Φ₂$ as the metavariable context for $\mvar{m₂}$.
+To check $\mvar{m₁} ≡ \mvar{m₂}$, where $\mvar{m₁}$ is an unassigned metavariable in $Φ₁$ and $\mvar{m₂}$ is an unassigned metavariable in $Φ₂$, we proceed as follows:
+\begin{itemize}
+  \item If $\mvar{m₁} = \mvar{m₂}$ (i.e., the metavariables have the same internal name), $\mvar{m₁} ≡ \mvar{m₂}$.
+  \item If $σ(\mvar{m₁}) = \mvar{m₂}$, then $\mvar{m₁} ≡ \mvar{m₂}$.
+  \item If $\mvar{m₁} ∈ \dom(σ)$, but $σ(\mvar{m₁}) ≠ \mvar{m₂}$, then $\mvar{m₁} ≢ \mvar{m₂}$.
+  \item Otherwise we check that the local contexts and types of $\mvar{m₁}$ and $\mvar{m₂}$ are equal up to renaming.
+        On success, the mapping $\mvar{m₁} ↦ \mvar{m₂}$ is added to $σ$.
+\end{itemize}
 
-\paragraph{Unassigned metavariables} To compare $\mvar{m₁}$ in context $Φ₁$ and $\mvar{m₂}$ in $Φ₂$, we first check whether $M(\mvar{m₁})$ is defined.
-If so, $\mvar{m₁}$ and $\mvar{m₂}$ are equal exactly if $M(\mvar{m₁}) = \mvar{m₂}$.
-If not, we first compare the local contexts $σ₁$ of $\mvar{m₁}$ (in $Φ₁$) and $σ₂$ of $\mvar{m₂}$ (in $Φ₂$).
-If these are equal, we compare the type $T₁$ of $\mvar{m₁}$ (in $Φ₁$ and with local context $σ₁$) to the type $T₂$ of $\mvar{m₂}$ (in $Φ₂$ and $σ₂$).
+To check $Γ₁ ≡ Γ₂$, where $Γ₁$ and $Γ₂$ are local contexts, we check that for each fvar $h₁ : T₁$ in $Γ₁$ and corresponding fvar $h₂ : T₂$ in $Γ₂$, $T₁ ≡ T₂$.
+However, we must take into account that the internal names of fvars in $Γ₁$ and $Γ₂$ may differ.
+Hence, we maintain another partial map $τ$ from fvar names to fvar names.
+A mapping $h₁ ↦ h₂$ in $τ$ means that the fvar $h₁$ in $Γ₁$ corresponds to $h₂$ in $Γ₂$, so once the types of each pair of fvars have been checked, the pair is added to $τ$.
 
-\paragraph{Local contexts} To compare a local context $σ₁$ in metavariable context $Φ₁$ with $σ₂$ in $Φ₂$, we first check whether they contain an equal number of fvars.
-If so, we check whether each fvar $h₁ : T₁$ in $σ₁$ is equal to the fvar $h₂ : T₂$ at the same position in $σ₂$; that is, whether $T₁ ≡ T₂$.
-If $h₁$ has an associated value ($h₁ : T₁ ≔ v₁$), then $h₂$ must additionally have a value $v₂$ with $v₁ ≡ v₂$.
+Finally, to check $e₁ ≡ e₂$, where $e₁$ and $e₂$ are expressions (including types), we check that $e₁$ and $e₂$ are structurally equal, with the following exceptions:
+\begin{itemize}
+  \item Any metavariable from $e₁$ that is assigned in $Φ₁$ is replaced with its assignment before checking for structural equality, and similar for $e₂$ and $Φ₂$.
+  \item An fvar $h₁$ in $e₁$ and an fvar $h₂$ at the same position in $e₂$ are considered equal if either $h₁ = h₂$ (i.e., $h₁$ and $h₂$ have the same internal name) or $τ(h₁) = h₂$.
+  \item An unassigned metavariable $\mvar{m₁}$ in $e₁$ and an unassigned metavariable $\mvar{m₂}$ at the same position in $e₂$ are considered equal if $\mvar{m₁} ≡ \mvar{m₂}$.
+\end{itemize}
 
-However, fvars can also appear in other expressions, so once we have confirmed that $h₁$ and $h₂$ are equal, we should treat them as equal despite their different names.
-To that end, we employ a similar scheme as for metavariables: while iterating through the local contexts, we maintain a bijective map $F$ from fvars in $σ₁$ to fvars in $σ₂$.
-Once we have determined $h₁ ≡ h₂$, we add the mapping $F(h₁) ≔ h₂$.
-In subsequent fvars and in the types of the metavariables whose local contexts we are processing, we then consider $h₁$ equal to an expression $e₂$ exactly if $e₂ = h₂$.
-
-\paragraph{Expressions} To compare an expression $e₁$ in metavariable context $Φ₁$ and local context $σ₁$ with an expression $e₂$ in $Φ₂$ and $σ₂$, we perform the expected structural comparison.
-For example, $e₁ = \Lam{x₁ : A₁}{b₁}$ and $e₂ = \Lam{x₂ : A₂}{b₂}$ are equal if $x₁ = x₂$, $A₁ ≡ A₂$ and $b₁ ≡ b₂$.
-
-The only expressions requiring special treatment are metavariables.
-If $e₁ = \mvar{m₁}$ and $e₂ = \mvar{m₂}$ and both $\mvar{m₁}$ and $\mvar{m₂}$ are unassigned, then we compare $\mvar{m₁}$ and $\mvar{m₂}$ as unassigned metavariables.
-If both $\mvar{m₁}$ and $\mvar{m₂}$ are assigned, we compare their assignments.
-Otherwise $\mvar{m₁}$ and $\mvar{m₂}$ are unequal.
-(Lean metavariables can also be \enquote{delayed assigned}, but I ignore this possibility here for clarity.)
+For example, when checking $f~\mvar{m₁}~\mvar{m₁} ≡ f~\mvar{m₂}~\mvar{m₂}$ (with $σ$ initially empty), we check whether $\mvar{m₁}$ and $\mvar{m₂}$ have equal local context and type.
+If so, the mapping $\mvar{m₁} ↦ \mvar{m₂}$ is added to $σ$.
+The check at the second occurrence of $\mvar{m₁}$ and $\mvar{m₂}$ then succeeds immediately because $σ(\mvar{m₁}) = \mvar{m₂}$.
+Conversely, when checking $f~\mvar{m₁}~\mvar{m₁} = f~\mvar{m₂}~\mvar{m₃}$, while the check of $\mvar{m₁} ≡ \mvar{m₂}$ succeeds, the check of $\mvar{m₁} ≡ \mvar{m₃}$ fails since at this point $\mvar{m₁} ∈ \dom(σ)$ but $σ(\mvar{m₁}) = m₂ ≠ m₃$.
 
 \medskip
 
-For the dynamic reordering algorithm of Section~\ref{sec:dynamic-reordering}, we need a slightly relaxed equality $≡_{a}$.
-In this variant, we allow differences in whether a metavariable is assigned, so an unassigned metavariable $\mvar{m₁}$ can be $≡_{a}$-equal to an arbitrary (type-correct) expression $e₂$.
-However, if $\mvar{m₁}$ appears multiple times, then the corresponding expressions $e₂$, $e₂'$, etc.\ must all be $≡_{a}$-equal.
-In other words, we optimistically assume that an expression $e₁$ with $e₁ ≡_{a} e₂$ will eventually be assigned to $\mvar{m₁}$ by a later tactic, but we ensure that such an assignment is possible by requiring $e₂ ≡_{a} e₂' ≡_{a} \dots$.
-Symmetrically, an unassigned metavariable $\mvar{m₂}$ from the right-hand expression can be equal to an arbitrary left-hand expression $e₁$ under analogous conditions.
+For the dynamic reordering algorithm of Section~\ref{sec:dynamic-reordering}, we need a slightly relaxed equality $\aeq$.
+In this variant, we allow differences in whether a metavariable is assigned, so an unassigned metavariable $\mvar{m₁}$ can be $\aeq$-equal to an arbitrary (type-correct) expression $e₂$.
+However, if $\mvar{m₁}$ appears multiple times, then the corresponding expressions $e₂$, $e₂'$, etc.\ must all be $\aeq$-equal.
+In other words, we optimistically assume that an expression $e₁$ with $e₁ \aeq e₂$ will be assigned to $\mvar{m₁}$ by a later tactic, but we ensure that such an assignment is possible.
+Symmetrically, an unassigned metavariable $\mvar{m₂}$ from the right-hand expression can be equal to an arbitrary left-hand expression $e₁$.
 
-To implement this check, we extend the state of our procedures with two maps $A_{l}$ and $A_{r}$.
-$A_{l}$ maps each unassigned metavariable from a left-hand expression to the first corresponding right-hand expression; $A_{r}$ does the same for right-hand unassigned metavariables.
+The above description omits some special cases, e.g.\ local definitions and delayed-assigned metavariables.
+See the implementation in file \texttt{Aesop/Util/EqualUpToIds.lean} for the full details.
 
 \section{Local Dynamic Optimisation}%
 \label{sec:local-optimisation}
@@ -665,7 +668,7 @@ If the tactic fails, \textsc{apply-step} implicitly also fails.
 If the tactic succeeds, we check whether the produced goals $G'$ (in the produced context $Ψ$) are equal to the expected goals $G^{\post}$ of the step (in the step's post-context $Φ^{\post}$).
 Here we use the equality from Section~\ref{sec:equality}: the goals in $G'$ should be equal to the goals in $G^{\post}$ up to names of fvars and metavariables.
 This is needed since different runs of the same tactic (even in the same metavariable context) will almost always generate different names.
-Furthermore, we use the variant $≡_{a}$, so we allow differences in whether a metavariable is assigned.
+Furthermore, we use the variant $\aeq$, so we allow differences in whether a metavariable is assigned.
 This is needed to account for the expected effects of reordering: if a tactic $t₁$ assigns a metavariable and a tactic $t₂$ was run after $t₁$ in the original order, but now $t₂$ is run before $t₁$, then we cannot expect the metavariable to be assigned after $t₂$.
 If the goals are not equal in this sense, \textsc{apply-step} again fails.
 
