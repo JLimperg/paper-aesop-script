@@ -637,10 +637,10 @@ The algorithm, shown as Algorithm~\ref{alg:dynamic-reordering} and implemented i
 
     \Function{apply-step}{$\mathit{steps}, Φ, G, g, s$}
       \State \Let step $s$ be $(Φ^{\pre}, g, t, Φ^{\post}, G^{\post})$
-      \State Run $t$ on $g$ in metavariable context $Φ$, producing context $Ψ$ and goals $G'$
-      \If{goals $G'$ in context $Ψ$ are equal to $G^{\post}$ in $Φ^{\post}$}
-        \State \Let $f$ be the partial map associating metavariables in $Φ^{\post}$ with matching metavariables in $Ψ$
-        \State For each step in $\mathit{steps}$, replace its pre-goal $g^{\pre}$ with $f(g^{\pre})$ if $f(g^{\pre})$ is defined
+      \State Run $t$ in tactic state $(Φ, [g])$, producing tactic state $(Ψ, G')$
+      \If{$(Φ^{\post}, G^{\post}) \aeq (Ψ, G')$}
+        \State \Let $σ$ be the partial map from metavariables in $Φ^{\post}$ to matching metavariables in $Ψ$
+        \State For each step in $\mathit{steps}$, replace its pre-goal $g^{\pre}$ with $σ(g^{\pre})$ if $g^{\pre} ∈ \dom(σ)$
         \State $s' \gets (Φ, g, t, Ψ, G')$
         \State \Let $G$ be $[g₁, \dots gₙ, g, k₁, \dots, kₘ]$
         \State \Let $G'$ be $[h₁, \dots, hₗ]$
@@ -672,8 +672,8 @@ Furthermore, we use the variant $\aeq$, so we allow differences in whether a met
 This is needed to account for the expected effects of reordering: if a tactic $t₁$ assigns a metavariable and a tactic $t₂$ was run after $t₁$ in the original order, but now $t₂$ is run before $t₁$, then we cannot expect the metavariable to be assigned after $t₂$.
 If the goals are not equal in this sense, \textsc{apply-step} again fails.
 
-If the goals are equal, the equality algorithm yields a partial bijective map $f$ that associates metavariables in $Φ^{\post}$ with their corresponding metavariables in $Ψ$.
-We use this map to update the steps, replacing each pre-goal $g^{\pre}$ with its corresponding goal $f(g^{\pre})$ if $f(g^{\pre})$ is defined.
+If the goals are equal, the equality check yields a partial bijective map $σ$ that associates metavariables in $Φ^{\post}$ with their corresponding metavariables in $Ψ$.
+We use this map to update the steps, replacing each pre-goal $g^{\pre}$ with its corresponding goal $σ(g^{\pre})$ if $σ(g^{\pre})$ is defined.
 Without this update, when we later look up the step for, say, a goal $g$ produced by the current step, we would not find anything because the step's pre-goal is a goal that is equal to $g$, but it is not $g$ itself.
 
 The remainder of \textsc{apply-step} is similar to the function of the same name from Algorithm~\ref{alg:static-reordering}.
@@ -683,7 +683,7 @@ If the recursion is unsuccessful, we implicitly fail.
 
 Note that the step we prepend to the script is not the original step.
 Rather, it is the step $\step{Φ}{g}{t}{Ψ}{G'}$ which retains the pre-goal $g$ and tactic $t$, but contains the pre-context $Φ$, the post-context $Ψ$ and the post-goals $G'$.
-This is necessary because the old step's pre-context, post-context and post-goals are only $≡_{a}$-equal to $Φ$, $Ψ$ and $G'$; but when we later build a structured script from the reordered steps, each step's tactic must produce precisely its post-state.
+This is necessary because the old step's pre-context, post-context and post-goals are only $\aeq$-equal to $Φ$, $Ψ$ and $G'$; but when we later build a structured script from the reordered steps, each step's tactic must produce precisely its post-state.
 Due to this update of the step, \textsc{reorder-dynamic} does not, in fact, merely reorder the steps but rather builds a new sequence of steps (with the same tactics).
 
 Being a straightforward backtracking algorithm, \textsc{reorder-dynamic} has exponential complexity in the number of steps $n$.
