@@ -882,11 +882,7 @@ The right-hand expression uses the $\tac{next}$ combinator, which is designed sp
 But it cannot be generated directly: when a tactic generates its script steps, it does not know whether its subgoals are focusable, and hence whether $\tac{next}$ is applicable.
 The tactic therefore generates a $\tac{rename\_i}$ script step and if the goal later turns out to be focusable, a bullet is added during structuring.
 The static optimisation pass then cleans up the script, replacing bullet and $\tac{rename\_i}$ with $\tac{next}$.
-
-This optimisation has a considerable impact on script readability because Aesop frequently uses the $\tac{split}$ tactic, which performs case splits (e.g.\ on the discriminants of if-then-else expressions) and introduces new hypotheses reflecting the choices made in each case.
-These hypotheses are inaccessible and the $\tac{split}$ tactic provides no way to name them directly.
-To maintain the invariant that there are no inaccessible hypotheses in the goal, Aesop therefore follows each $\tac{split}$ with a $\tac{rename\_i}$ for each generated subgoal.
-If the subgoals are focusable, which they usually are, we obtain a tactic expression that matches the left-hand side of the optimisation's rewrite rule.
+This is a considerable improvement since both the $\tac{ext}$ rule, discussed in Section~\ref{sec:generation}, and another rule that runs the \tac{split} tactic produce many focusable \tac{rename\_i} calls.
 
 \paragraph{Initial rename\_i}
 The second pass targets the $\tac{rename\_i}$ tactic that Aesop runs at the start of each proof search to establish the invariant that there are no inaccessible hypotheses in any goal (see Section~\ref{sec:generation}).
