@@ -197,7 +197,7 @@ The optimised script omits this redundant tactic invocation.
 This paper describes a \emph{script optimiser} that performs all these optimisations automatically, producing the optimised script from Figure~\ref{fig:big-example-optimised} and saving Aesop's users from the tedium of optimising the naive script by hand.
 This optimiser is a multi-stage pipeline somewhat similar to the optimisation pipeline of a compiler, but it optimises aesthetics rather than efficiency.
 It operates in three stages which address various deficiencies of the original script.
-After some preliminaries -- a brief introduction to Lean metaprogramming (Section~\ref{sec:background}); an overview of how naive scripts are generated; and an algorithm for determining whether two tactic calls yielded the same result (Section~\ref{sec:equality}); -- I discuss each optimiser stage in turn.
+After some preliminaries -- a brief introduction to Lean metaprogramming (Section~\ref{sec:background}); an overview of how naive scripts are generated; and an algorithm for determining whether two tactic calls yielded the same result (Section~\ref{sec:equality}) -- I discuss each optimiser stage in turn.
 
 \paragraph{Local dynamic optimisation (Section~\ref{sec:local-optimisation})}
 While there is usually a direct correspondence between Aesop rules and Lean tactics, some Aesop rules use non-standard tactic implementations for efficiency.
