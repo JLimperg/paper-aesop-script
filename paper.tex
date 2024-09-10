@@ -752,7 +752,7 @@ Applying this procedure recursively yields a tree of nodes.
 The empty node is only used if the sequence of steps is empty.
 
 The index of each inner node is the position of the node's step in the original sequence, i.e.\ 1 for $s₁$ etc.
-From this immediately follows that the children of a node with index $i$ must each have an index greater than $i$ since a step that applies to the post-goal of the $i$th step cannot have been run before the $i$th step.
+From this immediately follows that the children of a node with index $i$ must each have an index greater than $i$ since a step that applies to the post-goal of the $i^{\text{th}}$ step cannot have been run before the $i^{\text{th}}$ step.
 
 From a step tree, we can determine two properties of each step.
 First, the \emph{number of siblings} of a step is the number of siblings of the step's node in the step tree.
