@@ -11,6 +11,7 @@
 \usepackage[plain]{algorithm}
 \usepackage{algpseudocodex}
 \usepackage{mathtools}
+\usepackage{calc}
 
 \bibliographystyle{ACM-Reference-Format}
 
@@ -71,7 +72,7 @@
 \newcommand{\post}{\mathrm{post}}
 \newcommand{\tacbullet}{\vcenter{\hbox{\scalebox{.7}{$\bullet\;\;$}}}}
 \newcommand{\step}[5]{\ensuremath{(#1,\allowbreak #2,\allowbreak #3,\allowbreak #4,\allowbreak #5)}}
-\newcommand{\aeq}{\hat{≡}}
+\newcommand{\aeq}{\mathrel{\hat{≡}}}
 \newcommand{\dom}{\ensuremath{\mathrm{dom}}}
 
 \algnewcommand\algorithmiclet{\textbf{let}}
@@ -82,6 +83,11 @@
 \algnewcommand\OnFailure{\algorithmiconfailure{} }
 \algnewcommand\algorithmicfailure{\textbf{failure}}
 \algnewcommand\Failure{\algorithmicfailure{} }
+
+% Indentation for continuation lines in algorithm environments
+\newlength{\cindentlen}
+\setlength{\cindentlen}{1em}
+\newcommand{\cindent}{\hspace{\cindentlen}}
 
 \begin{document}
 
@@ -573,7 +579,8 @@ If the step then assigns $\mvar{m}$ while solving some other goal, we must remov
       \If{$g$ does not contain metavariables}
         \State \Return the step for $g$
       \Else
-        \State \Return the first step whose pre-goal is contained in $\mathit{tacticState}$
+        \State \Return the first step whose pre-goal is contained
+        \State \hspace{\widthof{\Return}} \cindent in $\mathit{tacticState}$
       \EndIf
     \EndFunction
 
@@ -583,7 +590,8 @@ If the step then assigns $\mvar{m}$ while solving some other goal, we must remov
       \State \Let $\mathit{tacticState}$ be $[g₁, \dots, gₙ, g, h₁, \dots, hₘ]$
       \State \Let $G$ be $[k₁, \dots, kₗ]$
       \State $r \gets [g₁, ..., gₙ, k₁, \dots, kₗ, h₁, \dots, hₘ]$
-      \State Remove from $r$ each goal $x$ such that $x$ is assigned in $Ψ$ but not in $Φ$
+      \State Remove from $r$ each goal $x$ such that $x$ is assigned in
+      \State \cindent $Ψ$ but not in $Φ$
       \State \Return $r$
     \EndFunction
   \end{algorithmic}
@@ -637,10 +645,13 @@ The algorithm, shown as Algorithm~\ref{alg:dynamic-reordering} and implemented i
 
     \Function{apply-step}{$\mathit{steps}, Φ, G, g, s$}
       \State \Let step $s$ be $(Φ^{\pre}, g, t, Φ^{\post}, G^{\post})$
-      \State Run $t$ in tactic state $(Φ, [g])$, producing tactic state $(Ψ, G')$
+      \State Run $t$ in tactic state $(Φ, [g])$, producing tactic state
+      \State \cindent $(Ψ, G')$
       \If{$(Φ^{\post}, G^{\post}) \aeq (Ψ, G')$}
-        \State \Let $σ$ be the partial map from metavariables in $Φ^{\post}$ to matching metavariables in $Ψ$
-        \State For each step in $\mathit{steps}$, replace its pre-goal $g^{\pre}$ with $σ(g^{\pre})$ if $g^{\pre} ∈ \dom(σ)$
+        \State \Let $σ$ be the partial map from metavariables in $Φ^{\post}$
+        \State \hspace{\widthof{\Let}} \cindent to matching metavariables in $Ψ$
+        \State For each step in $\mathit{steps}$, replace its pre-goal $g^{\pre}$
+        \State \cindent with $σ(g^{\pre})$ if $g^{\pre} ∈ \dom(σ)$
         \State $s' \gets (Φ, g, t, Ψ, G')$
         \State \Let $G$ be $[g₁, \dots gₙ, g, k₁, \dots, kₘ]$
         \State \Let $G'$ be $[h₁, \dots, hₗ]$
