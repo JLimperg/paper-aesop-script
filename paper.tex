@@ -561,7 +561,7 @@ If the step then assigns $\mvar{m}$ while solving some other goal, we must remov
       \If{$\mathit{steps}$ is empty}
         \State \Return $[]$
       \EndIf
-      \State \Let $g$ be the pre-goal of the first step
+      \State \Let $g$ be the pre-goal of the first step in $\mathit{steps}$
       \State $\mathit{tacticState} \gets [g]$
       \State $r \gets []$
       \While{$\mathit{tacticState}$ contains at least one goal}
@@ -577,20 +577,19 @@ If the step then assigns $\mvar{m}$ while solving some other goal, we must remov
     \Function{next-step}{$\mathit{tacticState}, \mathit{steps}$}
       \State \Let $g$ be the first goal in $\mathit{tacticState}$
       \If{$g$ does not contain metavariables}
-        \State \Return the step for $g$
+        \State \Return the step for $g$ from $\mathit{steps}$
       \Else
-        \State \Return the first step whose pre-goal is contained
-        \State \hspace{\widthof{\Return}} \cindent in $\mathit{tacticState}$
+        \State \Return the first step from $\mathit{steps}$ whose pre-goal is
+        \State \hspace{\widthof{\Return}} \cindent contained in $\mathit{tacticState}$
       \EndIf
     \EndFunction
 
     \medskip
 
     \Function{apply-step}{$\mathit{tacticState}, (Φ, g, t, Ψ, G)$}
-      \State \Let $\mathit{tacticState}$ be $[g₁, \dots, gₙ, g, h₁, \dots, hₘ]$
-      \State \Let $G$ be $[k₁, \dots, kₗ]$
-      \State $r \gets [g₁, ..., gₙ, k₁, \dots, kₗ, h₁, \dots, hₘ]$
-      \State Remove from $r$ each goal $x$ such that $x$ is assigned in
+      \State \Let $G$ be $[g₁, \dots, gₙ]$
+      \State Replace $g$ with $g₁, \dots, gₙ$ in $r$
+      \State Remove from $r$ each goal $g'$ such that $g'$ is assigned in
       \State \cindent $Ψ$ but not in $Φ$
       \State \Return $r$
     \EndFunction
@@ -650,14 +649,13 @@ The algorithm, shown as Algorithm~\ref{alg:dynamic-reordering} and implemented i
       \If{$(Φ^{\post}, G^{\post}) \aeq (Ψ, G')$}
         \State \Let $σ$ be the partial map from metavariables in $Φ^{\post}$
         \State \hspace{\widthof{\Let}} \cindent to matching metavariables in $Ψ$
-        \State For each step in $\mathit{steps}$, replace its pre-goal $g^{\pre}$
-        \State \cindent with $σ(g^{\pre})$ if $g^{\pre} ∈ \dom(σ)$
+        \State For each step in $\mathit{steps}$, replace its pre-goal $g'$ with
+        \State \cindent $σ(g')$ if $g' ∈ \dom(σ)$
         \State $s' \gets (Φ, g, t, Ψ, G')$
-        \State \Let $G$ be $[g₁, \dots gₙ, g, k₁, \dots, kₘ]$
-        \State \Let $G'$ be $[h₁, \dots, hₗ]$
-        \State $H \gets [g₁, \dots, gₙ, h₁, \dots, hₗ, k₁, \dots, kₘ]$
-        \State Remove from $H$ each goal that is assigned in $Ψ$
-        \State $(\mathit{script}, Ω) \gets \Call{reorder-dynamic}{\mathit{steps}, Ψ, H}$
+        \State \Let $G'$ be $[g₁, \dots, gₙ]$
+        \State Replace $g$ with $g₁, \dots, gₙ$ in $G$
+        \State Remove from $G$ each goal that is assigned in $Ψ$
+        \State $(\mathit{script}, Ω) \gets \Call{reorder-dynamic}{\mathit{steps}, Ψ, G}$
         \State \Return $(s' ∷ \mathit{script}, Ω)$
       \Else
         \State \Failure
