@@ -451,7 +451,7 @@ Finally, to check $e₁ ≡ e₂$, where $e₁$ and $e₂$ are expressions (incl
 For example, when checking $f~\mvar{m₁}~\mvar{m₁} ≡ f~\mvar{m₂}~\mvar{m₂}$ (with $σ$ initially empty), we check whether $\mvar{m₁}$ and $\mvar{m₂}$ have equal local context and type.
 If so, the mapping $\mvar{m₁} ↦ \mvar{m₂}$ is added to $σ$.
 The check at the second occurrence of $\mvar{m₁}$ and $\mvar{m₂}$ then succeeds immediately because $σ(\mvar{m₁}) = \mvar{m₂}$.
-Conversely, when checking $f~\mvar{m₁}~\mvar{m₁} = f~\mvar{m₂}~\mvar{m₃}$, while the check of $\mvar{m₁} ≡ \mvar{m₂}$ succeeds, the check of $\mvar{m₁} ≡ \mvar{m₃}$ fails since at this point $\mvar{m₁} ∈ \dom(σ)$ but $σ(\mvar{m₁}) = m₂ ≠ m₃$.
+Conversely, when checking $f~\mvar{m₁}~\mvar{m₁} = f~\mvar{m₂}~\mvar{m₃}$, while the check of $\mvar{m₁} ≡ \mvar{m₂}$ succeeds, the check of $\mvar{m₁} ≡ \mvar{m₃}$ fails since now $\mvar{m₁} ∈ \dom(σ)$ but $σ(\mvar{m₁}) = m₂ ≠ m₃$.
 
 \medskip
 
