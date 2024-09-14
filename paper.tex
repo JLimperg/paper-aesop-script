@@ -227,6 +227,7 @@ I call a proof \emph{structured} if it is depth-first and uses Lean's structurin
 Unfortunately, when we extract the tactics from an Aesop proof tree, they are generally not in depth-first order, for two reasons.
 First, a rule can generate multiple tactics and it would be onerous to require that these are always in depth-first order.
 Second, Aesop runs the rules in best-first order rather than depth-first, and the proof tree reflects this.
+(The script from Figure~\ref{fig:big-example-unoptimised} happens to be in depth-first order already.)
 
 To address this issue, we reorder the tactics to bring them into depth-first order.
 Once this is done, it is not hard to insert bullets and the structured variants of certain tactics (such as \tac{cases}).
