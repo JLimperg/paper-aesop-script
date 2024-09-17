@@ -74,6 +74,8 @@
 \newcommand{\step}[5]{\ensuremath{(#1,\allowbreak #2,\allowbreak #3,\allowbreak #4,\allowbreak #5)}}
 \newcommand{\aeq}{\mathrel{\hat{≡}}}
 \newcommand{\dom}{\ensuremath{\mathrm{dom}}}
+\newcommand{\millis}{\ensuremath{\mathrm{ms}}}
+\newcommand{\second}{\ensuremath{\mathrm{s}}}
 
 \algnewcommand\algorithmiclet{\textbf{let}}
 \algnewcommand\Let{\algorithmiclet{} }
@@ -427,7 +429,7 @@ To check $(Φ₁, G₁) ≡ (Φ₂, G₂)$, we iterate through $G₁$ and $G₂$
 
 To check $\mvar{m₁} ≡ \mvar{m₂}$, where $\mvar{m₁}$ is an unassigned metavariable in $Φ₁$ and $\mvar{m₂}$ is an unassigned metavariable in $Φ₂$, we proceed as follows:
 \begin{itemize}
-  \item If $\mvar{m₁} = \mvar{m₂}$ (i.e., the metavariables have the same internal name), $\mvar{m₁} ≡ \mvar{m₂}$.
+  \item If $\mvar{m₁} = \mvar{m₂}$ (i.e.\ the metavariables have the same internal name), $\mvar{m₁} ≡ \mvar{m₂}$.
   \item If $σ(\mvar{m₁}) = \mvar{m₂}$, then $\mvar{m₁} ≡ \mvar{m₂}$.
   \item If $\mvar{m₁} ∈ \dom(σ)$, but $σ(\mvar{m₁}) ≠ \mvar{m₂}$, then $\mvar{m₁} ≢ \mvar{m₂}$.
   \item Otherwise we check that the local contexts and types of $\mvar{m₁}$ and $\mvar{m₂}$ are equal up to renaming.
@@ -442,7 +444,7 @@ A mapping $h₁ ↦ h₂$ in $τ$ means that the fvar $h₁$ in $Γ₁$ correspo
 Finally, to check $e₁ ≡ e₂$, where $e₁$ and $e₂$ are expressions (including types), we check that $e₁$ and $e₂$ are structurally equal, with the following exceptions:
 \begin{itemize}
   \item Any metavariable from $e₁$ that is assigned in $Φ₁$ is replaced with its assignment before checking for structural equality, and similar for $e₂$ and $Φ₂$.
-  \item An fvar $h₁$ in $e₁$ and an fvar $h₂$ at the same position in $e₂$ are considered equal if either $h₁ = h₂$ (i.e., $h₁$ and $h₂$ have the same internal name) or $τ(h₁) = h₂$.
+  \item An fvar $h₁$ in $e₁$ and an fvar $h₂$ at the same position in $e₂$ are considered equal if either $h₁ = h₂$ (i.e.\ $h₁$ and $h₂$ have the same internal name) or $τ(h₁) = h₂$.
   \item An unassigned metavariable $\mvar{m₁}$ in $e₁$ and an unassigned metavariable $\mvar{m₂}$ at the same position in $e₂$ are considered equal if $\mvar{m₁} ≡ \mvar{m₂}$.
 \end{itemize}
 
@@ -699,7 +701,7 @@ Thus the first step takes $n-1$ \textsc{go-structured} calls until we hit a fail
 There we apply one step, then take another $n-2$ \textsc{go-structured} calls until we hit a failure, and so on.
 
 However, this worst-case behaviour rarely occurs in practice, for two reasons.
-First, most proofs contain no metavariables, in which case structuring cannot fail, so we run $n$ \textsc{go-structured} calls.
+First, most proofs contain no metavariables, in which case reordering cannot fail, so we run $n$ \textsc{go-structured} calls.
 Second, checking that each step produced the desired result (up to names and metavariable assignments) makes it unlikely that the algorithm applies a long chain of tactics only to eventually discover that the proof cannot be completed.
 
 \subsection{Structured Script Rendering}%
@@ -907,77 +909,78 @@ If none of the $xᵢ$ occur in $N$, the $\tac{rename\_i}$ is deleted entirely.
 Otherwise it is rewritten into $\tac{rename\_i}~xᵢ \dots xₙ$, where $i$ is the last index such that for all $0 ≤ j < i$ the name $xⱼ$ is not in $N$.
 This ensures that all used inaccessible hypotheses are renamed because $\tac{rename\_i}$ renames inaccessible hypotheses last-to-first.
 
+\medskip
+
 Both optimisation passes are currently implemented as bespoke transformations of the concrete syntax trees.
 In future, it may be worthwhile to add more optimisations and perhaps to generalise the optimisation passes and make them extensible.
 
 \section{Evaluation}%
 \label{sec:evaluation}
 
-The following evaluation seeks to answer two questions.
-First, what is the performance cost of script generation (with static or dynamic structuring)?
-Second, how much more effective is dynamic structuring at producing structured scripts?
-
-\begin{table}
+\begin{table}[ht]
   \centering
-  \begin{tabular}{lcccc}
-    \textbf{Category} & $\mathbf{N}$ & $\mathbf{R}$ & $\mathbf{\bar{A}}$ & $\mathbf{\bar{S}}$ \\
+  \small
+  \begin{tabular}{lcccc|cccc}
+    \textbf{Config} & $\mathbf{\bar{A}}$ & $\mathbf{A_{50}}$ & $\mathbf{A_{95}}$ & $\mathbf{A_{99}}$ & $\mathbf{\bar{S}}$ & $\mathbf{S_{50}}$ & $\mathbf{S_{95}}$ & $\mathbf{S_{99}}$ \\
     \midrule
-    \multicolumn{5}{l}{\textbf{Pure static structuring}} \\
-    All calls               & TODO & TODO & TODO & TODO \\
-    $99^{\mathrm{th}}$ pctl. & TODO & TODO & TODO & TODO \\
-    $95^{\mathrm{th}}$ pctl. & TODO & TODO & TODO & TODO \\
+    \multicolumn{9}{l}{\textbf{All scripts (n = 6395)}} \\
+    Static     & 426 & 170 & 1521 & 4299 & 104 & 37 & 378 & 1171 \\
+    Opt.\ dyn. & 427 & 169 & 1520 & 4292 & 105 & 37 & 381 & 1169 \\
+    Dynamic    & 545 & 212 & 1956 & 5541 & 223 & 78 & 832 & 2457 \\
     \midrule
-    \multicolumn{5}{l}{\textbf{Pure dynamic structuring}} \\
-    All calls               & TODO & TODO & TODO & TODO \\
-    $99^{\mathrm{th}}$ pctl. & TODO & TODO & TODO & TODO \\
-    $95^{\mathrm{th}}$ pctl. & TODO & TODO & TODO & TODO \\
-    \midrule
-    \multicolumn{5}{l}{\textbf{Optimised dynamic structuring}} \\
-    All calls               & TODO & TODO & TODO & TODO \\
-    $99^{\mathrm{th}}$ pctl. & TODO & TODO & TODO & TODO \\
-    $95^{\mathrm{th}}$ pctl. & TODO & TODO & TODO & TODO \\
+    \multicolumn{9}{l}{\textbf{Scripts with metavariables (n = 74)}} \\
+    Static     & 738 & 321 & 5256 & 6291 & 60  & 21 & 231 & 1544 \\
+    Opt.\ dyn. & 821 & 351 & 5580 & 6663 & 143 & 51 & 493 & 3579 \\
+    Dynamic    & 821 & 361 & 5535 & 6844 & 143 & 53 & 497 & 3502 \\
   \end{tabular}
   \medskip
-  \caption{Results of the performance evaluation. All times are in seconds.}%
+  \caption{Results of the performance evaluation.
+    $\bar{A}$ is the average time taken by each Aesop call (including script generation); $A_{50}$ is the median time; $A_{95}$ the $95^{\mathrm{th}}$ percentile time; and $A_{99}$ the $99^{\mathrm{th}}$ percentile time.
+    $\bar{S}$, $S_{50}$, $S_{95}$ and $S_{99}$ are the corresponding times for script generation.
+    The top part of the table times from the static, optimised dynamic and dynamic configurations across 6395 Aesop calls in Mathlib.
+    The bottom part contains corresponding times for those 74 Aesop calls whose proofs contain metavariables.
+    All times are in milliseconds.}%
   \label{table:evaluation}
 \end{table}
 
+The following evaluation seeks to answer two questions:
+what is the runtime cost of script generation (with static or dynamic reordering) and how much more effective is dynamic reordering at producing structured scripts?
+
 \paragraph{Performance}
-To evaluate the performance of script generation, we build Mathlib\footnote{Commit TODO, committed on TODO.} in single-threaded mode with an option that makes Aesop always generate (but not display) a script.
-With this option set, Aesop calls in TODO declarations time out when script generation and checking (see below) is enabled, so we increase the (deterministic) timeout for these declaration.
-We also disable script generation for TODO declarations, where it fails due to minor bugs. (TODO fix these.)
-In total, building this slightly modified version of Mathlib involves TODO Aesop calls.
+To evaluate the performance of script generation, we build Mathlib\footnote{Commit 6ff2f9b8b1b70b1f0cb1305a89a05c56a0875e63, $10^{\mathrm{th}}$ Sep.\ 2024, slightly modified to facilitate the evaluation.} with an option that makes Aesop always generate a script.
+During the build, Aesop is called 6410 times, but we disable script generation for 13 declarations where it fails due to bugs, leaving us with 6395 generated scripts.
+We also increase Lean's per-declaration timeout\footnote{In fact, this is an allocation limit, which is used as a deterministic timeout mechanism.} since otherwise Lean fails to typecheck some declarations in the most expensive evaluation configuration.
 
-We now consider three categories of benchmarks: pure static structuring, pure dynamic structuring and optimised dynamic structuring.
-For the first two categories, each Aesop call uses the respective structuring method.
-For the third category, Aesop uses static structuring if the proof did not involve any metavariables (in which case static structuring is guaranteed to succeed); otherwise it uses dynamic structuring.
-The last mode is currently Aesop's default.
+We build Mathlib with three configurations: pure static reordering, pure dynamic reordering and optimised dynamic reordering.
+With the first two configurations, each Aesop call uses the respective reordering method.
+With the third configuration, Aesop uses static reordering if the proof does not involve any metavariables (in which case static structuring always produces a perfectly structured script); otherwise it uses dynamic reordering.
+This configuration is Aesop's default.
 
-For each category, we consider three subcategories: all Aesop calls; the 99th percentile of Aesop calls with the fastest script generation and the 95th percentile.
-For each call, we record the total running time and the time spent on script generation.
-Then we report, for each subcategory, the number of Aesop calls $N$; the percentage $S$ of Aesop's running time spent on script generation; the average time $\bar{A}$ each Aesop call took; and the average time $\bar{S}$ each Aesop call spent on script generation.
+Table~\ref{table:evaluation} reports, for each configuration, the average results of three runs on an AMD Ryzen~7 3700X processor.
+The variance between runs is low; e.g.\ for the static configuration, the median Aesop call takes between $168.3\millis$ and $168.9\millis$ and the median script generation takes between $36.8\millis$ and $37.1\millis$.
+Unfortunately, only 74 of the scripts generated by Aesop in Mathlib involve metavariables, so to obtain a meaningful comparison of the different configurations, I report data for these 74 scripts separately.
+The experimental setup and all results are available in the supplement~\cite{supplement}.
 
-I ran the benchmark for each subcategory three times on an otherwise idle system with an AMD Ryzen-TODO processor.
-The variance between runs was low (e.g.\ for the purely static all-calls category, average Aesop time varied between TODO and TODO, and average script generation time between TODO and TODO).
-Table~\ref{table:evaluation} reports the average results of the three runs.
+The results show that the performance of script generation is acceptable for almost all scripts: in any configuration, the average script generation time is below $250\millis$; the median is below $100\millis$ and 95\% of scripts are generated in under $1\second$.
+However, in a few cases, script generation takes much longer.
+The culprits seem to be Aesop invocations involving very expensive calls to Lean's simplifier.
+These affect script generation even in the static configuration because simplifier calls are subject to a local dynamic optimisation, so each simplifier call is re-run once during script generation.
+In the dynamic configuration, the simplifier is then re-run at least once more during dynamic reordering.
+This observation suggests that local dynamic optimisations and dynamic reordering should perhaps be disabled if the script contains expensive steps.
 
-The results show TODO.
+\paragraph{Effectiveness of dynamic reordering}
+To evaluate the effectiveness of dynamic reordering, we build Mathlib as above, but now track the number of \emph{perfectly structured} scripts produced by static and dynamic reordering.
+A script is perfectly structured if every goal is focusable, i.e.\ every node in the structured script tree is a $\mathrm{fas}$ node.
 
-\paragraph{Effectiveness of dynamic structuring}
-To evaluate the effectiveness of dynamic structuring, we build Mathlib as above, but now track the number of \emph{perfectly structured} scripts produced by static and dynamic structuring.
-A script is perfectly structured if every node in the structured script tree is a $\mathrm{fas}$ node, i.e.\ every goal is focusable.
-Static structuring achieves this for TODO out of TODO produced scripts (TODO\%).
-With dynamic structuring, TODO scripts (TODO\%, or TODO more) end up perfectly structured.
-
-This shows TODO.
+Static reordering achieves this for 32 out of 74 scripts with metavariables while (optimised) dynamic reordering manages 35.
+Hence, on this dataset, dynamic reordering is more effective than static reordering, but only slightly.
+I suspect the reason for the small difference is that Aesop calls in Mathlib use metavariables sparingly (for performance reasons) and so static reordering is likely to \enquote{get lucky} and produce a perfectly structured script.
 
 \medskip
 
-The evaluation doubles as a test suite: Aesop can check whether the produced steps are well-formed and whether the final script, when evaluated by Lean, solves the initial goal.
-Both checks succeed for all but the TODO calls that we previously disabled.
-
-However, the checks miss at least one issue: due to technical issues, names of private lemmas can sometimes (but, in my experience, rarely) appear in scripts.
-The specific method used to evaluate scripts does not check for this, even though writing such scripts in a Lean file would cause an error.
+The evaluation also doubles as a test suite: Aesop can check whether the produced steps are well-formed and whether the final script, when evaluated by Lean, solves the initial goal.
+Both checks succeed for all but the 25 calls that we previously disabled.
+However, these checks are not entirely accurate; for example, Lean may evaluate scripts successfully even though they mention private lemmas from a different module.
 
 \section{Related Work}%
 \label{sec:related}
@@ -1000,7 +1003,7 @@ In the context of hammers -- systems which integrate external automated theorem 
 The most popular proof reconstruction method simply passes the lemmas used in the ATP proof to a second, less sophisticated ATP implemented within the proof assistant.
 However, there have also been attempts to directly transform the ATP proof into the proof assistant's language in HOL Light~\cite{PRocH}, Isabelle~\cite{Paulson2007,Blanchette2013a,Blanchette2013b,Blanchette2016} and Mizar~\cite{ATPMizar,MizarATP}.
 Here, the main challenge is to bridge the considerable gap between resolution proofs and the language of the respective proof assistant.
-Major issues include converting proofs by contradiction to direct proofs and encoding the skolemisation performed by ATPs.
+Major issues include converting proofs by contradiction into direct proofs and encoding the skolemisation performed by ATPs.
 Some integrations also compress proofs by combining multiple proof steps performed by the ATP into one proof step of the proof assistant.
 This involves checking repeatedly whether the compressed proof still works, similar to my dynamic optimisations.
 
