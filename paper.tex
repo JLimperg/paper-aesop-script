@@ -98,14 +98,15 @@
   When these search tactics find a proof, they could generate a tactic script, i.e.\ a sequence of lower-level tactics that proves the goal.
   Such a script can then replace the typically much slower invocation of the search tactic, or it can be used to understand and debug the search.
 
-  However, at least for Aesop, naively generated tactic scripts are highly unidiomatic.
+  However, at least for Aesop, naively generated scripts are highly unidiomatic.
   For example, they use tactics that users would typically avoid; they apply these tactics in an unusual order; and they do not take advantage of Lean's constructs for structuring tactic scripts.
 
-  To address these issues, I propose a three-step optimisation pipeline that transforms naive scripts into scripts that resemble a human-written Lean proof, saving Aesop's users the tedium of performing these transformations by hand.
-  The first step replaces less idiomatic tactics with more idiomatic ones, checking that the two sequences of tactics produce the same result.
-  The second step permutes the tactics in the script to bring them into a natural, depth-first order, which then allows us to use Lean's structuring constructs.
+  To address these issues, I propose a three-step optimisation pipeline that transforms naive scripts into scripts resembling a human-written Lean proof.
+  This saves Aesop's users the tedium of performing these transformations by hand.
+  The first stage of the pipeline replaces less idiomatic tactics with more idiomatic ones, checking that the two sequences of tactics produce the same result.
+  The second stage permutes the tactics in the script to bring them into a natural, depth-first order, which then allows us to use Lean's structuring constructs.
   This is non-trivial if the tactics operate on goals containing metavariables, in which case certain permutations change the tactics' behaviour.
-  The third step runs some straightforward post-processing passes.
+  The third stage runs some straightforward post-processing passes.
 \end{abstract}
 
 \title{Tactic Script Optimisation for Aesop}
@@ -209,10 +210,9 @@ After some preliminaries -- an introduction to Lean metaprogramming (Sec.~\ref{s
 
 \paragraph{Local dynamic optimisation (Sec.~\ref{sec:local-optimisation})}
 While there is usually a direct correspondence between Aesop rules and Lean tactics, some Aesop rules use non-standard tactic implementations for efficiency.
-For example, Aesop's \tac{unfold} rule uses the \tac{aesop\_unfold} tactic which has almost -- but not quite -- the same semantics as Lean's \tac{unfold}.
+For example, Aesop's \tac{unfold} rule uses the \tac{aesop\_unfold} tactic, which has almost -- but not quite -- the same semantics as Lean's \tac{unfold}.
 
-In practice most \tac{aesop\_unfold} calls behave exactly like \tac{unfold}.
-The optimiser should detect this and transform \tac{aesop\_unfold} into \tac{unfold} if possible.
+In practice, most \tac{aesop\_unfold} calls behave exactly like \tac{unfold}, so the optimiser should replace \tac{aesop\_unfold} with \tac{unfold} if possible.
 Unfortunately, whether a call is \enquote{simple} is tricky to determine, so I propose a straightforward alternative:
 using the procedure from Sec.~\ref{sec:equality} that determines whether two tactics produce the same result, the optimiser checks whether a specific call to \tac{unfold} behaves like the original \tac{aesop\_unfold} call; if so, the less idiomatic tactic is replaced by its more idiomatic equivalent.
 
@@ -297,7 +297,7 @@ Metavariables are registered in a \emph{metavariable context} that maps each met
 Hence, a metavariable is only valid in a metavariable context that contains its internal name.
 
 Metavariables can also be seen as goals, and I will use the two terms interchangeably.
-This view is particularly natural for metavariables whose types are propositions according to the Curry-Howard correspondence (TODO ref).
+This view is particularly natural for metavariables whose types are propositions according to the Curry-Howard correspondence.
 The fvars are then \emph{hypotheses} and the type of the metavariable is a statement to be proved.
 In fact, the goals on which Lean's tactics operate are just metavariables.
 At the heart of each tactic therefore lies a metaprogram that receives a list of metavariables $\mvar{g₁}, \dots, \mvar{gₙ}$ as input and produces a list of metavariables as output.
@@ -335,11 +335,12 @@ $Φ^{\post}$ is another metavariable context and $G^{\post}$ is a list of goals.
 We call $(Φ^{\pre}, [g^{\pre}])$ the step's \emph{pre-state} and $(Φ^{\post}, G^{\post})$ its \emph{post-state}.
 
 Note that Aesop rules always receive a single goal $g^{\pre}$ as input.
-When the tactic corresponding to a rule is run in a tactic state $(Φ,\allowbreak [g₁, \dots, gₙ])$, it receives the first goal $g₁$ as input, creates subgoals $h₁, \dots, hₘ$ (where $m$ can be zero) and returns a tactic state with goals $h₁, \dots, hₘ, g₂, \dots gₙ$.
+When the tactic corresponding to a rule is run in a tactic state $(Φ,\allowbreak [g₁, \dots, gₙ])$, it receives the first goal $g₁$ as input, creates subgoals $g₁', \dots, gₘ'$ (where $m$ can be zero) and returns a tactic state with goals $g₁', \dots, gₘ', g₂, \dots gₙ$.
 In other words, the tactic replaces the first input goal with some subgoals and leaves the other input goals unchanged.
 Most Lean tactics are of this form.
 
-Each rule is responsible for generating suitable steps, which must satisfy two conditions.
+Each rule is responsible for generating suitable steps.
+These must satisfy two conditions.
 First, each step must be \emph{well-formed}, meaning that $g^{\pre}$ must be declared but unassigned in $Φ^{\pre}$; $g^{\pre}$ must be declared and assigned in $Φ^{\post}$; each goal in $G^{\post}$ must be declared and unassigned in $Φ^{\post}$; and the tactic $t$, when run in the steps's pre-state, produces the step's post-state.
 Second, the steps must be \emph{faithful} to the rule.
 This means they must replicate the effect of the rule, so the pre-state of the first step must be the tactic state in which the rule was run and the post-state of the last step must be the tactic state that the rule produced.
@@ -365,7 +366,7 @@ The generation of suitable steps is complicated by three technical issues.
 \paragraph{Hypothesis names}
 Two related sub-issues pertain to the user-facing names of hypotheses.
 First, rules can operate on shadowed hypotheses, but these cannot be referred to in tactic syntax.
-For example, if the hypothesis $h$ in $\tac{obtain}~⟨h₁, h₂⟩ ≔ h$ is shadowed by a later hypothesis also named $h$, the tactic will try to perform the wrong operation.
+For example, if the hypothesis $h$ in the tactic $\tac{obtain}~⟨h₁, h₂⟩ ≔ h$ is shadowed by a later hypothesis also named $h$, the tactic will try to perform the wrong operation.
 To prevent this, we require that all rules (and hence all generated steps) maintain the invariant that all hypothesis names are distinct.
 
 Second, any hypothesis introduced by a tactic is by default \emph{inaccessible} unless the tactic provides an explicit name for it.
@@ -485,7 +486,7 @@ To take advantage of this observation, we let each step contain not just one but
 Of these, only the last must produce the right result; the others may be variants that are more idiomatic but may produce the wrong result.
 The \emph{local dynamic optimisation} step\footnote{Implemented in \texttt{Aesop/Script/Step.lean}.} then selects the first tactic that does, in fact, produce the right result.
 
-More formally, rules now produce \emph{multi-steps} (called \enquote{lazy steps} in the implementation) of the form $\step{Φ^{\pre}}{g^{\pre}}{[t₁, ..., tₙ]}{Φ^{\post}}{G^{\post}}$, where $\step{Φ^{\pre}}{g^{\pre}}{tₙ}{Φ^{\post}}{G^{\post}}$ must be a well-formed step.
+More formally, rules now produce \emph{multi-steps}\footnote{Multi-steps are called \emph{lazy steps} in the implementation.} $\step{Φ^{\pre}}{g^{\pre}}{[t₁, ..., tₙ]}{Φ^{\post}}{G^{\post}}$, where $\step{Φ^{\pre}}{g^{\pre}}{tₙ}{Φ^{\post}}{G^{\post}}$ must be a well-formed step.
 Local dynamic optimisation then turns each multi-step into a step by executing, for each $i ∈ \{1, \dots, n-1\}$, the tactic $tᵢ$ in tactic state $(Φ^{\pre}, [g^{\pre}])$, resulting in tactic state $(Φ_{i}, G_{i})$.
 If $(Φ_{i}, G_{i}) ≡ (Φ^{\post}, G^{\post})$, we use the step $(Φ^{\pre}, g^{\pre}, tᵢ, Φ^{\post}, G^{\post})$, which is well-formed by definition.
 If this process is unsuccessful for all $i$ up to $n-1$, we instead use the step $(Φ^{\pre}, g^{\pre}, tₙ, Φ^{\post}, G^{\post})$, which is well-formed by assumption.
@@ -689,11 +690,11 @@ We use this map to update the steps, replacing each pre-goal $g^{\pre}$ with its
 Without this update, when we later look up the step for, say, a goal $g$ produced by the current step, we would not find anything because the step's pre-goal is a goal that is equal to $g$, but it is not $g$ itself.
 
 The remainder of \textsc{apply-step} is similar to the function of the same name from Algorithm~\ref{alg:static-reordering}.
-We construct the new list of goals by replacing the pre-goal $g$ with the produced goals $G'$, then recurse into these goals.
-If the recursion is successful, we return the resulting script with the current step prepended, as well as the resulting metavariable context.
+We construct the new list of goals by replacing the pre-goal $g$ with the produced goals $G'$; then we then recurse into these goals.
+If the recursion is successful, we have found a script that solves the new list of goals, so we return this script with the current step prepended (as well as the resulting metavariable context).
 If the recursion is unsuccessful, we implicitly fail.
 
-Note that the step we prepend to the script is not the original step.
+Note that the step prepended to the script is not quite the original step.
 Rather, it is the step $\step{Φ}{g}{t}{Ψ}{G'}$ which retains the pre-goal $g$ and tactic $t$, but contains the pre-context $Φ$, the post-context $Ψ$ and the post-goals $G'$.
 This is necessary because the old step's pre-context, post-context and post-goals are only $\aeq$-equal to $Φ$, $Ψ$ and $G'$; but when we later build a structured script from the reordered steps, each step's tactic must produce precisely its post-state.
 Due to this update of the step, \textsc{reorder-dynamic} does not, in fact, merely reorder the steps but rather builds a new sequence of steps (with the same tactics).
@@ -705,7 +706,8 @@ There we apply one step, then take another $n-2$ \textsc{go-structured} calls un
 
 However, this worst-case behaviour rarely occurs in practice, for two reasons.
 First, most proofs contain no metavariables, in which case reordering cannot fail, so we run $n$ \textsc{go-structured} calls.
-Second, checking that each step produced the desired result (up to names and metavariable assignments) makes it unlikely that the algorithm applies a long chain of tactics only to eventually discover that the proof cannot be completed.
+(In fact, Aesop's default configuration always uses static structuring in this case, which is guaranteed to produce a perfectly structured script.)
+Second, checking that each step produced the desired result -- up to names and metavariable assignments -- makes it unlikely that the algorithm applies a long chain of tactics only to eventually discover that the proof cannot be completed.
 
 \subsection{Structured Script Rendering}%
 \label{sec:rendering}
@@ -720,18 +722,18 @@ This is a tree with three different kinds of nodes:
 
 The empty node denotes the empty structured script.
 A node of the form $\mathrm{on}(p, s, t)$ denotes the application of the step $s$ to the goal at the (zero-based) position $p$, followed by the application of the tactics in the script $t$ (the \enquote{tail}).
-When a structured script is converted into Lean syntax, the node $\mathrm{on}(p, s, t)$ is rendered as $\tac{on\_goal}~p ⇒ \mathit{tac}; \bar{t}$, where $\mathit{tac}$ is the tactic of step $s$ and $\bar{t}$ is the sequence of tactics that results from rendering $t$.%
+When a structured script is converted into Lean syntax, the node $\mathrm{on}(p, s, t)$ is displayed as $\tac{on\_goal}~p ⇒ \mathit{tac}; \bar{t}$, where $\mathit{tac}$ is the tactic of step $s$ and $\bar{t}$ is the sequence of tactics that results from rendering $t$.%
 \footnote{In fact, $\tac{on\_goal}$ uses one-based positions, so $p$ must be incremented by one.}
 Lean's $\mathrm{on\_goal}$ tactic combinator runs the tactic $\mathit{tac}$ in a tactic state containing only the goal at the given position, with all other goals temporarily invisible.
 The semicolon sequences tactics.
-As a special case, if the position is zero, the node is rendered as simply $\mathit{tac}; t$ since tactics by default target the first goal.
+As a special case, if the position is zero, the node is displayed as simply $\mathit{tac}; t$ since tactics by default target the first goal.
 After reordering, this case is the most common one.
 
-A node of the form $\mathrm{fas}(p, h, t)$ (\enquote{focus and solve}) is rendered as $\tac{on\_goal}~p ⇒ \{ h \}; \bar{t}$.
+A node of the form $\mathrm{fas}(p, h, t)$ (\enquote{focus and solve}) is displayed as $\tac{on\_goal}~p ⇒ \{ h \}; \bar{t}$.
 The braces signal to Lean that the script $h$ (which may comprise multiple tactics) is expected to fully solve the goal at position $p$.
 If it does not, Lean raises an error.
 This is the essence of structuring a script: once we start on a goal, we want to finish it without considering any of its siblings.
-As a special case (again, the most common one after reordering), a node $\mathrm{fas}(0, h, t)$ is rendered as
+As a special case (again, the most common one after reordering), a node $\mathrm{fas}(0, h, t)$ is displayed as
 \[
   \begin{array}{l}
     \tacbullet h \\
@@ -940,8 +942,8 @@ In future, it may be worthwhile to add more optimisations and perhaps to general
   \caption{Results of the performance evaluation.
     $\bar{A}$ is the average time taken by each Aesop call (including script generation); $A_{50}$ is the median time; $A_{95}$ the $95^{\mathrm{th}}$ percentile time; and $A_{99}$ the $99^{\mathrm{th}}$ percentile time.
     $\bar{S}$, $S_{50}$, $S_{95}$ and $S_{99}$ are the corresponding times for script generation.
-    The top part of the table times from the static, optimised dynamic and dynamic configurations across 6395 Aesop calls in Mathlib.
-    The bottom part contains corresponding times for those 74 Aesop calls whose proofs contain metavariables.
+    The top part of the table contains timings from the static, optimised dynamic and dynamic configurations across 6395 Aesop calls in Mathlib.
+    The bottom part contains corresponding timings for those 74 Aesop calls which generate proofs with metavariables.
     All times are in milliseconds.}%
   \label{table:evaluation}
 \end{table}
@@ -952,7 +954,7 @@ what is the runtime cost of script generation (with static or dynamic reordering
 \paragraph{Performance}
 To evaluate the performance of script generation, we build Mathlib\footnote{Commit 6ff2f9b8b1b70b1f0cb1305a89a05c56a0875e63, $10^{\mathrm{th}}$ Sep.\ 2024, slightly modified to facilitate the evaluation.} with an option that makes Aesop always generate a script.
 During the build, Aesop is called 6410 times, but we disable script generation for 13 declarations where it fails due to bugs, leaving us with 6395 generated scripts.
-We also increase Lean's per-declaration timeout\footnote{In fact, this is an allocation limit, which is used as a deterministic timeout mechanism.} since otherwise Lean fails to typecheck some declarations in the most expensive evaluation configuration.
+We also increase the per-declaration timeout\footnote{In fact, this is an allocation limit, which is used as a deterministic timeout mechanism.} since otherwise Lean fails to typecheck some declarations in the most expensive evaluation configuration.
 
 We build Mathlib with three configurations: pure static reordering, pure dynamic reordering and optimised dynamic reordering.
 With the first two configurations, each Aesop call uses the respective reordering method.
@@ -981,7 +983,7 @@ I suspect the reason for the small difference is that Aesop calls in Mathlib use
 
 \medskip
 
-The evaluation also doubles as a test suite: Aesop can check whether the produced steps are well-formed and whether the final script, when evaluated by Lean, solves the initial goal.
+The evaluation also doubles as a test suite: Aesop can check that the produced steps are well-formed and that the final script, when evaluated by Lean, solves the initial goal.
 Both checks succeed for all but the 25 calls that we previously disabled.
 However, these checks are not entirely accurate; for example, Lean may evaluate scripts successfully even though they mention private lemmas from a different module.
 
@@ -1018,11 +1020,13 @@ The first stage optimises individual tactics, replacing them with a more idiomat
 The second, most involved stage brings the script's tactics into depth-first order (or as close to depth-first as possible) and structures the script.
 This is non-trivial if the proof involves metavariables, which make tactics non-commutative.
 I propose two ways to reorder the goals: a fast static algorithm and a slower but more precise dynamic one.
-The evaluation shows TODO.
 The third stage performs some syntactic post-processing.
 
+The evaluation shows that script generation (with either reordering algorithm) is fast enough for a large majority of scripts in practice, though it can become slow if an Aesop call involves expensive rules.
+Dynamic reordering is slightly better at structuring scripts than static reordering.
+
 A natural continuation of this work would be to simply add more optimisations.
-For example, Aesop pervasively uses the \tac{simp\_all} tactic, even when \tac{simp} would suffice.
+For example, Aesop sometimes uses the \tac{simp\_all} tactic even though \tac{simp} would suffice.
 More ambitiously, an extended optimisation pipeline could become useful for human-written scripts as well:
 using Lean might be more productive and fun if users could write functional-but-ugly proofs and the optimiser would automatically improve them.
 
