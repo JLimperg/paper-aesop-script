@@ -262,8 +262,11 @@ For example, tactic expressions of the form $\tacbullet \tac{rename\_i}~x₁ \do
 \medskip
 
 Concluding the paper, I evaluate the performance of script generation and the efficacy of dynamic structuring (Section~\ref{sec:evaluation}) and survey related work (Section~\ref{sec:related}).
-The described optimisation pipeline is available in mainline Aesop\footnote{\url{https://github.com/leanprover-community/aesop}} and can already be used by Mathlib~\cite{Mathlib} developers and other Lean users.
-The supplement for this paper\footnote{TODO} contains the exact version of Aesop described here as well as all materials needed to reproduce the evaluation.
+The evaluation shows that script generation, both with static reordering and dynamic reordering, is fast enough in almost all cases.
+It also shows that dynamic reordering is more effective than static reordering, though the effect is small.
+
+The described optimisation pipeline is available in mainline Aesop\footnote{\url{https://github.com/leanprover-community/aesop}} and can already be used by contributors to Lean's mathematical library, Mathlib~\cite{Mathlib}, and other Lean users.
+The supplement for this paper~\cite{supplement} contains the exact version of Aesop described here, as well as all materials needed to reproduce the evaluation.
 
 \section{Background}%
 \label{sec:background}
