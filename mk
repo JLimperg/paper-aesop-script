@@ -2,7 +2,7 @@
 
 ROOT="$(dirname "$0")"
 
-podman run \
+podman run --rm \
   --mount=type=bind,source="$ROOT",destination=/work \
   --workdir /work \
   registry.gitlab.com/islandoftex/images/texlive:TL2024-2024-06-30-full \
