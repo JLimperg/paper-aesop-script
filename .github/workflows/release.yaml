@@ -1,0 +1,18 @@
+on:
+  push:
+    tags: ["*"]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+    - name: Build PDF
+      run: ./mk
+    - uses: ncipollo/release-action@v1.14.0
+      with:
+        artifacts: "build/paper.pdf"
+        artifactErrorsFailBuild: true
