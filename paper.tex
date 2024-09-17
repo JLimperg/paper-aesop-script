@@ -540,7 +540,6 @@ This yields the desired result: a partial script with holes marked by \tac{sorry
 \subsection{Static Reordering}%
 \label{sec:static-reordering}
 
-% TODO check all filenames
 The static reordering algorithm\footnote{Implemented in \texttt{Aesop/Script/StructureStatic.lean}.} is shown as Algorithm~\ref{alg:static-reordering}.
 Its main function, \textsc{reorder-static}, first sets up $\mathit{tacticState}$.
 This variable contains the goals of the current tactic state, so we initialise it with the pre-goal of the first step.
