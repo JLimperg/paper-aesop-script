@@ -465,7 +465,7 @@ In other words, we optimistically assume that an expression $e₁$ with $e₁ \a
 Symmetrically, an unassigned metavariable $\mvar{m₂}$ from the right-hand expression can be equal to an arbitrary left-hand expression $e₁$.
 
 The above description omits some special cases, e.g.\ local definitions and delayed-assigned metavariables.
-See the implementation in file \texttt{Aesop/Util/EqualUpToIds.lean} for the full details.
+See the implementation\footnote{\texttt{Aesop/Util/EqualUpToIds.lean}} for the full details.
 
 \section{Local Dynamic Optimisation}%
 \label{sec:local-optimisation}
@@ -483,7 +483,7 @@ So to ensure that the generated tactic is faithful to the rule, we use the non-s
 However, in practice, \tac{unfold} actually produces the correct result in many cases.
 To take advantage of this observation, we let each step contain not just one but multiple alternative tactics.
 Of these, only the last must produce the right result; the others may be variants that are more idiomatic but may produce the wrong result.
-The \emph{local dynamic optimisation} step (implemented in \texttt{Aesop/Script/Step.lean}) then selects the first tactic that does, in fact, produce the right result.
+The \emph{local dynamic optimisation} step\footnote{Implemented in \texttt{Aesop/Script/Step.lean}.} then selects the first tactic that does, in fact, produce the right result.
 
 More formally, rules now produce \emph{multi-steps} (called \enquote{lazy steps} in the implementation) of the form $\step{Φ^{\pre}}{g^{\pre}}{[t₁, ..., tₙ]}{Φ^{\post}}{G^{\post}}$, where $\step{Φ^{\pre}}{g^{\pre}}{tₙ}{Φ^{\post}}{G^{\post}}$ must be a well-formed step.
 Local dynamic optimisation then turns each multi-step into a step by executing, for each $i ∈ \{1, \dots, n-1\}$, the tactic $tᵢ$ in tactic state $(Φ^{\pre}, [g^{\pre}])$, resulting in tactic state $(Φ_{i}, G_{i})$.
@@ -540,7 +540,7 @@ This yields the desired result: a partial script with holes marked by \tac{sorry
 \label{sec:static-reordering}
 
 % TODO check all filenames
-The static reordering algorithm is shown as Algorithm~\ref{alg:static-reordering} and implemented in \texttt{Aesop/Script/StructureStatic.lean}.
+The static reordering algorithm\footnote{Implemented in \texttt{Aesop/Script/StructureStatic.lean}.} is shown as Algorithm~\ref{alg:static-reordering}.
 Its main function, \textsc{reorder-static}, first sets up $\mathit{tacticState}$.
 This variable contains the goals of the current tactic state, so we initialise it with the pre-goal of the first step.
 (For the purposes of static reordering, metavariable assignments and declarations are not essential, so $\mathit{tacticState}$ does not track the current metavariable context.)
@@ -615,7 +615,7 @@ Modelling these effects would add substantial complexity to \textsc{apply-step},
 
 To overcome the inherent limitations of static reordering, I propose a dynamic variant.
 This variant is based on the observation that even if reordering in the presence of metavariables is not always possible, it is still possible often enough to be worth trying.
-The algorithm, shown as Algorithm~\ref{alg:dynamic-reordering} and implemented in \texttt{Aesop/Script/StructureDynamic.lean}, therefore reorders optimistically.
+The algorithm\footnote{Implemented in \texttt{Aesop/Script/StructureDynamic.lean}.}, shown as Algorithm~\ref{alg:dynamic-reordering}, therefore reorders optimistically.
 
 \begin{algorithm}
   \begin{algorithmic}
@@ -710,7 +710,7 @@ Second, checking that each step produced the desired result (up to names and met
 \subsection{Structured Script Rendering}%
 \label{sec:rendering}
 
-Once the script is ordered, it needs to be transformed into a \emph{structured script} (defined in \texttt{Aesop/Script/SScript.lean}).
+Once the script is ordered, it needs to be transformed into a \emph{structured script}.\footnote{Implemented in \texttt{Aesop/Script/SScript.lean} and \texttt{Aesop/\allowbreak Script/\allowbreak UScriptToSScript.lean}.}
 This is a tree with three different kinds of nodes:
 \begin{itemize}
   \item The $\mathrm{empty}$ node with no data and no children.
@@ -740,7 +740,7 @@ As a special case (again, the most common one after reordering), a node $\mathrm
 \]
 The bullet focuses the first goal and acts as a pair of braces around $h$.
 
-Transforming an ordered sequence of steps into a structured script (implemented in \texttt{Aesop/Script/UScriptToSScript.lean}) is conceptually straightforward, but not entirely trivial.
+Transforming an ordered sequence of steps into a structured script is conceptually straightforward, but not entirely trivial.
 As a start, it is convenient to view the sequence of steps as a \emph{step tree}.
 This is a tree with two types of nodes:
 \begin{itemize}
@@ -818,8 +818,8 @@ In fact, this treatment of the tactic state is slightly simplified.
 When generating the $h$ script, we restrict the tactic state to the single goal $g$.
 However, this does not mean that $h$ only acts on $g$ and its descendants: steps can also solve goals that are not present in the tactic state.
 This happens when a goal appears as a metavariable in one of the goals that are present in the tactic state and a step assigns this metavariable.
-The tactic state must therefore track such \enquote{invisible} goals as well and after generating $h$, we must remove any solved goals from the tactic state $ts$.
-See the implementation in \texttt{Aesop/Script/TacticState.lean}.
+The tactic state must therefore track such \enquote{invisible} goals as well and after generating $h$, we must remove any solved goals from the tactic state $ts$.%
+\footnote{See the implementation in \texttt{Aesop/Script/TacticState.lean}.}
 
 Perhaps surprisingly, not all steps for focusable goals should be rendered as $\mathrm{fas}$ nodes.
 If there is only a single goal, it is idiomatic to apply the next tactic directly, without using a bullet to focus on the goal.
