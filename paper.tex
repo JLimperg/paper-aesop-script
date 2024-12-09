@@ -164,7 +164,7 @@ In interactive theorem provers, white-box proof automation tactics such as Coq's
 These tactics search for a proof by applying proof steps, or \emph{rules}, that often translate directly into low-level tactics of the respective prover.
 For instance, Coq's \tac{auto} applies a user-specified set of lemmas recursively until it finds a complete proof (or until no more lemmas can be applied or a depth limit is reached), and each application of a lemma translates into a call to the \tac{eapply} tactic.
 Instead of a lemma, \tac{auto} users can also directly specify a tactic to be tried during the search.
-Lean's Aesop supports additional kinds of rules, but the principle remains the same: almost every rule corresponds directly to one or more low-level tactic call.
+Lean's Aesop supports additional kinds of rules, but the principle remains the same: almost every rule corresponds directly to one or more low-level tactic calls.
 
 This correspondence makes it fairly easy to output tactics that correspond to the rules used during the proof, and that therefore form a complete tactic proof.
 We call this a \emph{tactic script}.
@@ -180,7 +180,7 @@ Generating a script can be helpful in three ways:
 
 However, to realise at least the first two of these advantages, the script should be reasonably close to an idiomatic, human-written proof.
 In the case of Aesop, a naively generated script is typically far from this ideal and so requires extensive manual post-processing.
-Fig.~\ref{fig:big-example} shows a typical, if small, naive script on the left and an optimised equivalent on the right.
+Fig.~\ref{fig:big-example} shows a typical naive script on the left and an optimised equivalent on the right.
 
 \begin{figure*}
   \centering
@@ -244,7 +244,7 @@ By contrast, the optimised script uses Lean's \tac{next} combinator, which focus
 Third, the first invocation of \tac{simp\_all} in the naive script does not close the goal it is run on.
 Such \enquote{non-terminal} use of \tac{simp\_all} is considered bad style because it makes proofs less maintainable: any changes to the user-defined set of equations used by the simplifier may cause \tac{simp\_all} to produce a different result, and therefore to break the proof.
 To avoid this issue, the optimised script uses the variant \tac{simp\_all~only}, which explicitly enumerates the equations used by \tac{simp\_all}.
-Since this transformation also speeds up \tac{simp\_all}, it is applied to all invocations, not just the non-terminal ones.
+Since this transformation also speeds up \tac{simp\_all}, it is in fact applied to all invocations, not just the non-terminal one.
 
 This paper describes a \emph{script optimiser} that performs all these optimisations (and more) automatically, producing the optimised script from Fig.~\ref{fig:big-example-optimised} and saving Aesop's users from the tedium of optimising the naive script by hand.
 The optimiser is a multi-stage pipeline somewhat similar to the optimisation pipeline of a compiler, but it optimises aesthetics rather than efficiency.
@@ -256,10 +256,10 @@ While there is usually a direct correspondence between Aesop rules and Lean tact
 For example, Aesop's \tac{unfold} rule uses the \tac{aesop\_unfold} tactic, which has almost -- but not quite -- the same semantics as Lean's \tac{unfold}.
 
 In practice, most \tac{aesop\_unfold} calls behave exactly like \tac{unfold}, so the optimiser should replace \tac{aesop\_unfold} with \tac{unfold} if possible.
-Unfortunately, whether a call is \enquote{simple} is tricky to determine, so I propose a straightforward alternative:
+Unfortunately, it is tricky to determine whether any particular \tac{unfold} call has this property, so I propose a straightforward alternative:
 using the procedure from Sec.~\ref{sec:equality} that determines whether two tactics produce the same result, the optimiser checks whether a specific call to \tac{unfold} behaves like the original \tac{aesop\_unfold} call; if so, the less idiomatic tactic is replaced by its more idiomatic equivalent.
 
-The same approach is also used when the optimiser replaces \tac{simp\_all} invocations with \tac{simp\_all~only} as in Fig.~\ref{fig:big-example}.
+The same approach is used when the optimiser replaces \tac{simp\_all} invocations with \tac{simp\_all~only} in the example from Fig.~\ref{fig:big-example}.
 When an optimisation re-executes parts of the script, as this one does, I call it \emph{dynamic}; otherwise \emph{static}.
 
 \paragraph{Structuring (Sec.~\ref{sec:structuring})}
@@ -272,7 +272,7 @@ Unfortunately, when we extract the tactics from an Aesop proof tree, they are ge
 First, Aesop runs the rules in best-first order rather than depth-first, and the proof tree reflects this.
 Second, a rule can generate multiple tactics and it would be onerous to require that these are always in depth-first order.
 For example, as shown in Fig.~\ref{fig:big-example-unoptimised}, Aesop's \tac{split} rule first runs the \tac{split} tactic, which usually produces multiple subgoals, and then runs the \tac{rename\_i} tactic on each subgoal.
-When the rule generates these tactic invocations, it does not yet know which other tactics will be used to eventually close the first subgoal, but it already needs to operate on the other subgoals.
+When the rule generates these tactic invocations, it does not know which other tactics will be used to eventually close the first subgoal, but it already needs to operate on the other subgoals.
 It therefore cannot easily generate a depth-first proof.
 
 To address the issue of out-of-order proofs, we reorder the tactics to bring them into depth-first order.
@@ -286,7 +286,7 @@ Aesop's solution is to apply the \tac{rfl} tactic to the second goal, solving it
 The first goal, which now reads $a ∈ l → a ∈ l$, is then solved by Lean's simplifier.
 However, applying the two tactics in the opposite order would not work: the simplifier does not assign metavariables, so it makes no progress on the first goal as long as the second one has not been solved.
 In short, metavariables make tactics non-commutative.
-(This is also the reason why Aesop's proof tree cannot, in general, store the rules in depth-first order~\cite[Sec.~4]{Aesop}.)
+(This is also the reason why we generally cannot retrieve rule applications from Aesop's proof tree in depth-first order~\cite[Sec.~4]{Aesop}.)
 
 I propose two solutions for this issue.
 The first reorders the tactics in the script statically, i.e.\ without re-executing them.
@@ -309,7 +309,7 @@ Concluding the paper, I evaluate the performance of script generation and the ef
 The evaluation shows that script generation, both with static reordering and dynamic reordering, is fast enough in almost all cases.
 It also shows that dynamic reordering is more effective than static reordering, though the effect is small.
 
-The described optimisation pipeline is available in mainline Aesop\footnote{\url{https://github.com/leanprover-community/aesop}} and can already be used by contributors to Lean's mathematical library, Mathlib~\cite{Mathlib}, and other Lean users.
+The described optimisation pipeline is available in mainline Aesop\footnote{\url{https://github.com/leanprover-community/aesop}} and can already be used by contributors to Lean's mathematical library, Mathlib~\cite{Mathlib}, and by other Lean users.
 The supplement for this paper~\cite{supplement} contains the exact version of Aesop described here, as well as all materials needed to reproduce the evaluation.
 
 \section{Background}%
