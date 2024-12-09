@@ -980,7 +980,10 @@ In future, it may be worthwhile to add more optimisations and perhaps to general
 \section{Evaluation}%
 \label{sec:evaluation}
 
-\begin{table}[ht]
+The following evaluation seeks to answer two questions:
+what is the runtime cost of script generation (with static or dynamic reordering) and how much more effective is dynamic reordering at producing structured scripts?
+
+\begin{table}
   \centering
   \small
   \begin{tabular}{lcccc|cccc}
@@ -1005,9 +1008,6 @@ In future, it may be worthwhile to add more optimisations and perhaps to general
     All times are in milliseconds.}%
   \label{table:evaluation}
 \end{table}
-
-The following evaluation seeks to answer two questions:
-what is the runtime cost of script generation (with static or dynamic reordering) and how much more effective is dynamic reordering at producing structured scripts?
 
 \paragraph{Performance}
 To evaluate the performance of script optimisation, we build Mathlib\footnote{Commit 6ff2f9b8b1b70b1f0cb1305a89a05c56a0875e63, $10^{\mathrm{th}}$ Sep.\ 2024, slightly modified to facilitate the evaluation.} with an option that makes Aesop always generate a script.
