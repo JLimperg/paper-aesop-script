@@ -76,6 +76,7 @@
 \newcommand{\dom}{\ensuremath{\mathrm{dom}}}
 \newcommand{\millis}{\ensuremath{\mathrm{ms}}}
 \newcommand{\second}{\ensuremath{\mathrm{s}}}
+\newcommand{\ty}[1]{\ensuremath{\mathrm{#1}}}
 
 \algnewcommand\algorithmiclet{\textbf{let}}
 \algnewcommand\Let{\algorithmiclet{} }
@@ -94,8 +95,8 @@
 \begin{document}
 
 \begin{abstract}
-  White-box proof search tactics such as Coq's auto, Isabelle's auto and Lean's Aesop apply proof rules that often translate directly to lower-level tactics.
-  When these search tactics find a proof, they could generate a tactic script, i.e.\ a sequence of lower-level tactics that proves the goal.
+  White-box proof search tactics such as Coq's \tac{auto}, Isabelle's \tac{auto} and Lean's Aesop apply proof rules that often translate directly to lower-level tactics.
+  When these search tactics find a proof, they can, at least in principle, generate a tactic script, i.e.\ a sequence of lower-level tactics that proves the goal.
   Such a script can then replace the typically much slower invocation of the search tactic, or it can be used to understand and debug the search.
 
   However, at least for Aesop, naively generated scripts are highly unidiomatic.
@@ -127,10 +128,10 @@
 \section{Introduction}%
 \label{sec:intro}
 
-In interactive theorem provers, white-box proof automation tactics such as Coq's~\cite{Coq} auto and sauto~\cite{sauto}, Isabelle's~\cite{Isabelle} auto~\cite{IsabelleAuto} and Lean's~\cite{Lean4} Aesop~\cite{Aesop} provide a simple but effective and customisable way to automate straightforward proofs.
+In interactive theorem provers, white-box proof automation tactics such as Coq's~\cite{Coq} \tac{auto} and \tac{sauto}~\cite{sauto}, Isabelle's~\cite{Isabelle} \tac{auto}~\cite{IsabelleAuto} and Lean's~\cite{Lean4} Aesop~\cite{Aesop} provide a simple but effective and customisable way to automate straightforward proofs.
 These tactics search for a proof by applying proof steps, or \emph{rules}, that often translate directly into low-level tactics of the respective prover.
-For instance, Coq's auto applies a user-specified set of lemmas recursively until it finds a complete proof (or until no more lemmas can be applied or a depth limit is reached), and each application of a lemma translates into a call to the \tac{eapply} tactic.
-Instead of a lemma, auto users can also directly specify a tactic to be tried during the search.
+For instance, Coq's \tac{auto} applies a user-specified set of lemmas recursively until it finds a complete proof (or until no more lemmas can be applied or a depth limit is reached), and each application of a lemma translates into a call to the \tac{eapply} tactic.
+Instead of a lemma, \tac{auto} users can also directly specify a tactic to be tried during the search.
 Lean's Aesop supports additional kinds of rules, but the principle remains the same: almost every rule corresponds directly to one or more low-level tactic call.
 
 This correspondence makes it fairly easy to output tactics that correspond to the rules used during the proof, and that therefore form a complete tactic proof.
@@ -149,31 +150,24 @@ However, to realise at least the first two of these advantages, the script shoul
 In the case of Aesop, a naively generated script is typically far from this ideal and so requires extensive manual post-processing.
 Fig.~\ref{fig:big-example} shows a typical, if small, naive script on the left and an optimised equivalent on the right.
 
-It will be clear to any Lean user that the naive script has several issues.
-First, the script is just a list of tactics with no structure.
-This makes it hard to tell what each tactic does without replaying the proof, either in the reader's head or in Lean's interactive mode.
-After post-processing, the optimised script uses bullets to delimit the \enquote{if} and \enquote{only if} parts of the proof.
-Second, the naive script performs a case split on a list, using a somewhat ugly construction based on the \tac{rcases} tactic.
-The optimised script replaces this with an idiomatic, structured variant of the \tac{cases} tactic.
-Third, the naive script starts with a call to the \tac{rename\_i} tactic, which gives a name to a local hypothesis that is not used anywhere in the rest of the proof.
-The optimised script omits this redundant tactic invocation.
-
 \begin{figure*}
   \centering
   \mbox{}\hfill
   \begin{subfigure}[b]{0.35\textwidth}
     \[
       \begin{array}{l}
-        \tac{rename\_i}~α \\
-        \tac{apply}~\mathrm{Iff.intro} \\
-        \tac{intro}~a \\
-        \tac{rcases}~l~\tac{with}~⟨⟩~|~⟨\mathit{head}, \mathit{tail}⟩ \\
-        \tac{simp\_all}~\tac{only}~[\dots] \\
-        \tac{simp\_all}~\tac{only}~[\dots] \\
-        \tac{intro}~a \\
-        \tac{obtain}~⟨w, h⟩ ≔ a \\
-        \tac{subst}~h \\
-        \tac{simp\_all}~\tac{only}~[\dots]
+        \tac{intro}~l₁~l₂~x \\
+        \tac{simp\_all} \\
+        \tac{split} \\
+        \tac{rename\_i}~\mathit{x\_1}~\mathit{heq} \\
+        \tac{on\_goal}~2 ⇒ \tac{rename\_i}~\mathit{x\_1}~a~\mathit{as}~\mathit{heq} \\
+        \tac{simp\_all} \\
+        \tac{split} \\
+        \tac{rename\_i}~\mathit{x\_2} \\
+        \tac{on\_goal}~2 ⇒ \tac{rename\_i}~\mathit{x\_2}~\mathit{a\_1}~\mathit{as\_1} \\
+        \tac{subst}~\mathit{heq} \\
+        \tac{simp\_all} \\
+        \tac{simp\_all}
       \end{array}
     \]
     \caption{Script before optimisations}%
@@ -182,29 +176,46 @@ The optimised script omits this redundant tactic invocation.
   \hfill
   \begin{subfigure}[b]{0.35\textwidth}
     \[
-      \arraycolsep=0pt
-      \begin{array}{ll}
-        \multicolumn{2}{l}{\tac{apply}~\mathrm{Iff.intro}} \\
-        \tacbullet &\tac{intro}~a \\
-        &\tac{cases}~l~\tac{with} \\
-        &|~\mathrm{nil} ⇒ \tac{simp\_all}~\tac{only}~[\dots] \\
-        &|~\mathrm{cons}~\mathit{head}~\mathit{tail} ⇒ \tac{simp\_all}~\tac{only}~[\dots] \\
-        \tacbullet &\tac{intro}~a \\
-        &\tac{obtain}~⟨w, h⟩ ≔ a \\
-        &\tac{subst}~h \\
-        &\tac{simp\_all}~\tac{only}~[\dots]
+      \begin{array}{l}
+        \tac{intro}~l₁~l₂~x \\
+        \tac{simp\_all~only}~[\mathrm{ne\_eq},\mathrm{head?}] \\
+        \tac{split} \\
+        \tac{next}~\mathit{x\_1}~\mathit{heq} ⇒ \\
+        \quad \tac{simp\_all~only}~[\mathrm{append\_eq\_nil}, \mathrm{false\_and}] \\
+        \tac{next}~\mathit{x\_1}~a~\mathit{as}~\mathit{heq} ⇒ \\
+        \quad \tac{split} \\
+        \quad \tac{next}~\mathit{x\_2} ⇒ \\
+        \quad \quad \tac{subst}~\mathit{heq} \\
+        \quad \quad \tac{simp\_all~only}~[\mathrm{not\_true\_eq\_false}] \\
+        \quad \tac{next}~\mathit{x\_2}~\mathit{a\_1}~\mathit{as\_1} ⇒ \\
+        \quad \quad \tac{simp\_all~only}~[\mathrm{reduceCtorEq}, \dots]
       \end{array}
     \]
     \caption{Script after optimisations}%
     \label{fig:big-example-optimised}
   \end{subfigure}
   \hfill\mbox{}
-  \caption{Script generated by Aesop to prove the lemma that a list has length one if and only if it is equal to the singleton list $[a]$ for some $a$.}%
+  \caption{Script generated by Aesop for the lemma that the head of the concatenation $l₁ \mathbin{++} l₂$ of two lists $l₁$ and $l₂$ is the head of $l₁$, provided that $l₁$ is nonempty.}%
   \label{fig:big-example}
 \end{figure*}
 
-This paper describes a \emph{script optimiser} that performs all these optimisations automatically, producing the optimised script from Fig.~\ref{fig:big-example-optimised} and saving Aesop's users from the tedium of optimising the naive script by hand.
-This optimiser is a multi-stage pipeline somewhat similar to the optimisation pipeline of a compiler, but it optimises aesthetics rather than efficiency.
+It will be clear to any Lean user that the naive script has several issues.
+First, it sometimes works on the goals out of order, using the combinator \tac{on\_goal~2} to run a tactic on the second goal in the current list of goals.
+This is unusual since human-written proof scripts overwhelmingly operate in a depth-first manner, manipulating the first goal until it is solved and only then moving on to the second goal.
+The optimised script permutes the tactics to obtain such a depth-first proof.
+
+Second, the naive script is just a list of tactics with no structure.
+This makes it hard to tell what each tactic does without replaying the proof, either in the reader's head or in Lean's interactive mode.
+In particular, the first invocation of \tac{split} produces two subgoals, the first of which is then closed by the next invocation of \tac{simp\_all} (a variant of Lean's simplifier), but neither of these facts are readily apparent.
+By contrast, the optimised script uses Lean's \tac{next} combinator, which focuses the current goal and hides any other goals, to clarify the proof structure.
+
+Third, the first invocation of \tac{simp\_all} in the naive script does not close the goal it is run on.
+Such \enquote{non-terminal} use of \tac{simp\_all} is considered bad style because it makes proofs less maintainable: any changes to the user-defined set of equations used by the simplifier may cause \tac{simp\_all} to produce a different result, and therefore to break the proof.
+To avoid this issue, the optimised script uses the variant \tac{simp\_all~only}, which explicitly enumerates the equations used by \tac{simp\_all}.
+Since this transformation also speeds up \tac{simp\_all}, it is applied to all invocations, not just the non-terminal ones.
+
+This paper describes a \emph{script optimiser} that performs all these optimisations (and more) automatically, producing the optimised script from Fig.~\ref{fig:big-example-optimised} and saving Aesop's users from the tedium of optimising the naive script by hand.
+The optimiser is a multi-stage pipeline somewhat similar to the optimisation pipeline of a compiler, but it optimises aesthetics rather than efficiency.
 It operates in three stages which address various deficiencies of the original script.
 After some preliminaries -- an introduction to Lean metaprogramming (Sec.~\ref{sec:background}); an overview of how naive scripts are generated; and an algorithm for comparing the results of two tactic calls (Sec.~\ref{sec:equality}) -- I discuss each optimiser stage in turn.
 
@@ -216,23 +227,24 @@ In practice, most \tac{aesop\_unfold} calls behave exactly like \tac{unfold}, so
 Unfortunately, whether a call is \enquote{simple} is tricky to determine, so I propose a straightforward alternative:
 using the procedure from Sec.~\ref{sec:equality} that determines whether two tactics produce the same result, the optimiser checks whether a specific call to \tac{unfold} behaves like the original \tac{aesop\_unfold} call; if so, the less idiomatic tactic is replaced by its more idiomatic equivalent.
 
-Similar optimisations are also used for other tactics.
+The same approach is also used when the optimiser replaces \tac{simp\_all} invocations with \tac{simp\_all~only} as in Fig.~\ref{fig:big-example}.
 When an optimisation re-executes parts of the script, as this one does, I call it \emph{dynamic}; otherwise \emph{static}.
 
 \paragraph{Structuring (Sec.~\ref{sec:structuring})}
 Human-written proofs overwhelmingly have a depth-first structure: each tactic is applied to the first goal in the current list of goals.
-This style is supported by various structuring mechanisms in Lean's tactic language, such as the bullets in Fig.~\ref{fig:big-example-optimised}.
-These focus on the first goal in the current goal list, meaning that all other goals disappear until the first goal is solved.
+This style is supported by various structuring mechanisms in Lean's tactic language, such as the \tac{next} combinator in Fig.~\ref{fig:big-example-optimised}.
 I call a proof \emph{structured} if it is depth-first and uses Lean's structuring mechanisms appropriately.%
 \footnote{This terminology is only loosely related to structured proof languages such as Isar~\cite{Isar}.}
 
 Unfortunately, when we extract the tactics from an Aesop proof tree, they are generally not in depth-first order, for two reasons.
-First, a rule can generate multiple tactics and it would be onerous to require that these are always in depth-first order.
-Second, Aesop runs the rules in best-first order rather than depth-first, and the proof tree reflects this.
-(The script from Fig.~\ref{fig:big-example-unoptimised} happens to be in depth-first order already.)
+First, Aesop runs the rules in best-first order rather than depth-first, and the proof tree reflects this.
+Second, a rule can generate multiple tactics and it would be onerous to require that these are always in depth-first order.
+For example, as shown in Fig.~\ref{fig:big-example-unoptimised}, Aesop's \tac{split} rule first runs the \tac{split} tactic, which usually produces multiple subgoals, and then runs the \tac{rename\_i} tactic on each subgoal.
+When the rule generates these tactic invocations, it does not yet know which other tactics will be used to eventually close the first subgoal, but it already needs to operate on the other subgoals.
+It therefore cannot easily generate a depth-first proof.
 
-To address this issue, we reorder the tactics to bring them into depth-first order.
-Once this is done, it is not hard to insert bullets and the structured variants of certain tactics (such as \tac{cases}).
+To address the issue of out-of-order proofs, we reorder the tactics to bring them into depth-first order.
+Once this is done, it is not hard to insert structuring constructs such as the \tac{next} combinator.
 
 However, reordering becomes non-trivial if some of the goals that appear during the proof contain metavariables.
 Metavariables (called existential variables in Coq and schematic variables in Isabelle) stand for a term to be specified later.
@@ -257,7 +269,7 @@ We can therefore try to reorder the script's tactics dynamically, re-executing t
 
 Finally, we run two optimisation passes on the produced script.
 These perform purely syntactic optimisations.
-For example, tactic expressions of the form $\tacbullet \tac{rename\_i}~x₁ \dots xₙ$ are converted to the more idiomatic $\tac{next}~x₁ \dots xₙ$.
+For example, tactic expressions of the form $\tacbullet \tac{rename\_i}~x₁ \dots xₙ$ (where $\tacbullet$ is a combinator that focuses the current goal) are converted to the more idiomatic $\tac{next}~x₁ \dots xₙ$.
 
 \medskip
 
@@ -282,7 +294,7 @@ The type theory is standard, but expressions may additionally contain \emph{meta
 These are structures which represent holes or placeholders in an expression.
 Each metavariable $\mvar{x}$ is identified by a globally unique internal name and has a type $T$ and a \emph{local context}.
 We write $\mvar{x} : T$ to indicate the type.
-The local context is a list of \emph{fvars}, which are the variables that can be used in the expression that will eventually replace the metavariable.
+The local context is a list of \emph{fvars} (\enquote{free variables}), which are the variables that can be used in the expression that will eventually replace the metavariable.
 Each fvar is identified by a globally unique internal name and has a type and a user-facing name.
 When we view metavariables as placeholders, the fvars represent variables that are currently in scope, so in the expression $\Lam{(n : ℕ)~(x : \mathrm{Fin}~n)}{\mvar{y}}$ the metavariable $\mvar{y}$ has a local context containing at least the fvars $n : ℕ$ and $x : \mathrm{Fin}~n$.
 (It may contain additional fvars if the expression appears under additional binders.)
@@ -324,10 +336,14 @@ This means that expressions have been assigned to all metavariables created duri
 As a result, we obtain as the assignment of the initial goal a metavariable-free expression that proves the theorem statement.
 This expression is then type-checked by Lean's kernel (to catch possible bugs in the tactics) and registered as a proof of the theorem.
 
+Once the optimiser has produced an optimised concrete syntax tree, we use Lean's formatter (or \emph{delaborator}) to convert it into text that can be inserted into the user's Lean file.
+The formatter is not perfect; it occasionally produces code that is not idiomatically formatted or even fails to compile.
+However, I have found this not to be a major problem in practice since formatting issues are fairly rare and it takes only a little manual effort to fix them.
+
 \section{Naive Script Generation}%
 \label{sec:generation}
 
-When we instruct Aesop to generate a script, it records, for each rule it runs, one or more \emph{steps}, which represent the application of a tactic.
+When we instruct Aesop to generate a script, it records, for each rule it runs, one or more \emph{steps}, each of which represents the application of a tactic.
 A step is a quintuple $\step{Φ^{\pre}}{g^{\pre}}{t}{Φ^{\post}}{G^{\post}}$ where $Φ^{\pre}$ is a metavariable context,
 $g^{\pre}$ is a goal (metavariable),
 $t$ is the syntax of a tactic,
@@ -346,7 +362,7 @@ Second, the steps must be \emph{faithful} to the rule.
 This means they must replicate the effect of the rule, so the pre-state of the first step must be the tactic state in which the rule was run and the post-state of the last step must be the tactic state that the rule produced.
 
 The optimiser assumes (as will we in the remainder of this paper) that all generated steps satisfy these conditions, but it can also check them as a debugging aid.
-Aesop rules are guaranteed to produce well-formed and faithful steps unless a low-level variant of the \tac{tactic} rule builder, which turns an arbitrary Lean metaprogram into a rule, is used.
+Aesop's rule builders, which turn Lean declarations or tactics into rules, ensure that the constructed rules produce well-formed and faithful steps, with the sole exception of a low-level rule builder that can be used to directly register an arbitrary Lean metaprogram as a rule.
 
 For a rule that directly corresponds to a tactic, it is generally easy to generate a single step representing the rule.
 For example, typical Aesop use cases involve many \tac{apply} rules, which apply a specific theorem to the goal.
@@ -367,13 +383,17 @@ The generation of suitable steps is complicated by three technical issues.
 Two related sub-issues pertain to the user-facing names of hypotheses.
 First, rules can operate on shadowed hypotheses, but these cannot be referred to in tactic syntax.
 For example, if the hypothesis $h$ in the tactic $\tac{obtain}~⟨h₁, h₂⟩ ≔ h$ is shadowed by a later hypothesis also named $h$, the tactic will try to perform the wrong operation.
-To prevent this, we require that all rules (and hence all generated steps) maintain the invariant that all hypothesis names are distinct.
+To prevent this, rules (and hence their generated steps) are expected to maintain the invariant that all hypothesis names are distinct.
+Most rule builders generate rules that do so by construction, but when users register arbitrary tactics as rules, they must take care to respect the invariant.
 
-Second, any hypothesis introduced by a tactic is by default \emph{inaccessible} unless the tactic provides an explicit name for it.
+Second, any hypothesis that is introduced by a tactic, but for which the tactic does not provide a name, is by default \emph{inaccessible}.
+This means it receives an auto-generated name, but this name cannot be referred to in the remainder of the proof script.
+The purpose of this mechanism is to increase the maintainability of tactic proofs: they are forced not to rely on names generated by tactics, which may change between Lean versions.
+Accordingly, almost all tactics allow users to explicitly provide names for any generated hypotheses.
 For example, the tactic $\tac{cases}~h$, where $h : A ∨ B$, produces two subgoals, one with hypothesis $h' : A$ and one with $h' : B$, but in each subgoal $h'$ is inaccessible.
-Like shadowed hypotheses, inaccessible hypotheses cannot be referred to from tactic scripts.
-This increases the maintainability of tactic proofs since they are forced not to rely on names generated by tactics, which may change between Lean versions.
-For the optimiser, it means that steps must also maintain the invariant that the goal contains no inaccessible hypotheses, so we must generate, for example, the tactic $\tac{cases}~h~\tac{with}~h₁~h₂$ that immediately names the new hypotheses $h₁$ and $h₂$.
+The variant $\tac{cases'}~h~\tac{with}~h₁~h₂$ yields $h₁ : A$ and $h₂ : B$ with $h₁$ and $h₂$ accessible in the remainder of the script.
+For the optimiser, all this means that just like we need to prevent shadowing, we also need to prevent inaccessible hypotheses, since otherwise the script may attempt to refer to a hypothesis that cannot be referred to.
+Hence, steps must explicitly give names to any introduced hypotheses.
 
 To initially establish both name-related invariants, Aesop uses a special rule at the start of each search.
 This rule runs the tactic $\tac{rename\_i}~h₁ \dots hₙ$ which renames the shadowed or inaccessible hypotheses to $h₁, \dots, hₙ$ (where the $hᵢ$ are arbitrary names that do not occur in the initial goal's local context).
@@ -440,7 +460,7 @@ To check $\mvar{m₁} ≡ \mvar{m₂}$, where $\mvar{m₁}$ is an unassigned met
         On success, the mapping $\mvar{m₁} ↦ \mvar{m₂}$ is added to $σ$.
 \end{itemize}
 
-To check $Γ₁ ≡ Γ₂$, where $Γ₁$ and $Γ₂$ are local contexts, we check that for each fvar $h₁ : T₁$ in $Γ₁$ and corresponding fvar $h₂ : T₂$ in $Γ₂$, $T₁ ≡ T₂$.
+To check $Γ₁ ≡ Γ₂$, where $Γ₁$ and $Γ₂$ are local contexts, we check that for each fvar $h₁ : T₁$ in $Γ₁$ and corresponding fvar $h₂ : T₂$ in $Γ₂$, we have $T₁ ≡ T₂$.
 However, we must take into account that the internal names of fvars in $Γ₁$ and $Γ₂$ may differ.
 Hence, we maintain another partial map $τ$ from fvar names to fvar names.
 A mapping $h₁ ↦ h₂$ in $τ$ means that the fvar $h₁$ in $Γ₁$ corresponds to $h₂$ in $Γ₂$, so once the types of each pair of fvars have been checked, the pair is added to $τ$.
@@ -472,13 +492,13 @@ See the implementation\footnote{\texttt{Aesop/Util/EqualUpToIds.lean}} for the f
 \label{sec:local-optimisation}
 
 When we generate a tactic $t$ corresponding to a rule $r$, there are often multiple functionally identical choices for $t$.
-For example, splitting a conjunctive hypothesis $h : A ∧ B$ into $h₁ : A$ and $h₂ : B$ can be achieved with tactics $\tac{cases}~h~\tac{with}~h₁~h₂$ or $\tac{obtain}~⟨h₁, h₂⟩ ≔ h$.
+For example, splitting a conjunctive hypothesis $h : A ∧ B$ into $h₁ : A$ and $h₂ : B$ can be achieved with tactics $\tac{cases'}~h~\tac{with}~h₁~h₂$ or $\tac{obtain}~⟨h₁, h₂⟩ ≔ h$.
 The second tactic is considered more idiomatic, so we choose it.
 
 However, it is sometimes tricky to determine whether a more idiomatic tactic does, in fact, have the same effect as the applied rule.
 For example, Aesop has a rule that unfolds a given list of defined constants $c₁, \dots, cₙ$.
-This has a similar effect as running the Lean tactic $\tac{unfold}~c₁ \dots cₙ$, but Aesop uses a slightly different algorithm which sometimes produces a different result.%
-\footnote{The reason for this discrepancy is that the \tac{unfold} algorithm is inefficient when there are many constants to be unfolded.}
+This has a similar effect as running the Lean tactic $\tac{unfold}~c₁ \dots cₙ$, but Aesop uses a slightly different algorithm that sometimes produces a different result.%
+\footnote{The reason for this discrepancy is that the simpler \tac{unfold} algorithm is inefficient when there are many constants to be unfolded.}
 So to ensure that the generated tactic is faithful to the rule, we use the non-standard \tac{aesop\_unfold} tactic, which implements Aesop's unfolding algorithm.
 
 However, in practice, \tac{unfold} actually produces the correct result in many cases.
@@ -544,7 +564,7 @@ The static reordering algorithm\footnote{Implemented in \texttt{Aesop/Script/Str
 Its main function, \textsc{reorder-static}, first sets up $\mathit{tacticState}$.
 This variable contains the goals of the current tactic state, so we initialise it with the pre-goal of the first step.
 (For the purposes of static reordering, metavariable assignments and declarations are not essential, so $\mathit{tacticState}$ does not track the current metavariable context.)
-The remainder of the algorithm iteratively selects steps and applies them to the tactic state (simulating the effect of the step's tactic) until there are no goals left.
+The remainder of the algorithm iteratively selects steps and applies them to the tactic state, simulating the effect of the step's tactic, until there are no goals left.
 
 The function \textsc{next-step}, which picks the next step to apply to a given tactic state, implements the actual reordering.
 If the first goal in the tactic state does not contain metavariables, we can pick the step that applies to this goal, since it cannot have any ordering constraints with regards to other steps.
@@ -591,10 +611,10 @@ If the step then assigns $\mvar{m}$ while solving some other goal, we must remov
 
     \Function{apply-step}{$\mathit{tacticState}, (Φ, g, t, Ψ, G)$}
       \State \Let $G$ be $[g₁, \dots, gₙ]$
-      \State Replace $g$ with $g₁, \dots, gₙ$ in $r$
-      \State Remove from $r$ each goal $g'$ such that $g'$ is assigned in
-      \State \cindent $Ψ$ but not in $Φ$
-      \State \Return $r$
+      \State Replace $g$ with $g₁, \dots, gₙ$ in $\mathit{tacticState}$
+      \State Remove from $\mathit{tacticState}$ each goal $g'$ such that $g'$
+      \State \cindent is assigned in $Ψ$ but not in $Φ$
+      \State \Return $\mathit{tacticState}$
     \EndFunction
   \end{algorithmic}
   \caption{Static reordering}\label{alg:static-reordering}
@@ -693,6 +713,12 @@ We construct the new list of goals by replacing the pre-goal $g$ with the produc
 If the recursion is successful, we have found a script that solves the new list of goals, so we return this script with the current step prepended (as well as the resulting metavariable context).
 If the recursion is unsuccessful, we implicitly fail.
 
+Assuming that all steps are well-formed, the tactic $t$, when run in tactic state $(Φ^{\pre}, [g])$, produces $(Φ^{\post}, G^{\post})$.
+Hence, \textsc{apply-step} fails only when the input metavariable context $Φ$ differs from $Φ^{\pre}$.
+This can happen when \textsc{apply-step} is called after we have reordered some steps, i.e.\ after at least one call to \textsc{go-structured}.
+But it cannot happen when we execute the steps in the original order.
+As a result, \textsc{reorder-dynamic}, which in the worst case falls back to a sequence of \textsc{go-unstructured} calls, cannot fail.
+
 Note that the step prepended to the script is not quite the original step.
 Rather, it is the step $\step{Φ}{g}{t}{Ψ}{G'}$ which retains the pre-goal $g$ and tactic $t$, but contains the pre-context $Φ$, the post-context $Ψ$ and the post-goals $G'$.
 This is necessary because the old step's pre-context, post-context and post-goals are only $\aeq$-equal to $Φ$, $Ψ$ and $G'$; but when we later build a structured script from the reordered steps, each step's tactic must produce precisely its post-state.
@@ -766,7 +792,9 @@ Hence, as the terminology suggests, we can focus on the step's pre-goal before r
 
 We now consider Algorithm~\ref{alg:sscript}, which converts a sequence of steps to a structured script.
 Its sole function, \textsc{sscript}, takes a sequence of steps $\mathit{steps}$, a tactic state $\mathit{ts}$, a start position $i$ and a stop position $j$.
-It returns a new tactic state and a structured script.
+We assume that a step tree for $\mathit{steps}$ has been constructed previously, and that we can therefore determine the number of siblings of a step $s ∈ \mathit{steps}$, as well as whether $s$ is focusable (and if so, what its maximal child index is).
+
+The \textsc{sscript} function then returns a new tactic state and a structured script.
 The structured script corresponds to the subsequence of $\mathit{steps}$ from $i$ to $j$, and the tactic state is the tactic state that results from running this subsequence (or the corresponding structured script) on the initial tactic state $\mathit{ts}$.
 As in Sec.~\ref{sec:static-reordering}, we do not need to consider the tactic states' metavariable contexts, so tactic states are modelled as lists of goals.
 
@@ -846,7 +874,6 @@ Instead, the correct question to ask is whether the parent tactic of $t₁$ and 
 
 A number of Lean tactics have structured variants.
 For example, case analysis on a list $l$ can be written in the following two ways:
-
 \[
   \begin{array}{ll}
     \tac{cases}~l                               & \tac{cases}~l~\tac{with}\\
@@ -951,7 +978,7 @@ The following evaluation seeks to answer two questions:
 what is the runtime cost of script generation (with static or dynamic reordering) and how much more effective is dynamic reordering at producing structured scripts?
 
 \paragraph{Performance}
-To evaluate the performance of script generation, we build Mathlib\footnote{Commit 6ff2f9b8b1b70b1f0cb1305a89a05c56a0875e63, $10^{\mathrm{th}}$ Sep.\ 2024, slightly modified to facilitate the evaluation.} with an option that makes Aesop always generate a script.
+To evaluate the performance of script optimisation, we build Mathlib\footnote{Commit 6ff2f9b8b1b70b1f0cb1305a89a05c56a0875e63, $10^{\mathrm{th}}$ Sep.\ 2024, slightly modified to facilitate the evaluation.} with an option that makes Aesop always generate a script.
 During the build, Aesop is called 6410 times, but we disable script generation for 13 declarations where it fails due to bugs, leaving us with 6395 generated scripts.
 We also increase the per-declaration timeout\footnote{In fact, this is an allocation limit, which is used as a deterministic timeout mechanism.} since otherwise Lean fails to typecheck some declarations in the most expensive evaluation configuration.
 
@@ -959,6 +986,8 @@ We build Mathlib with three configurations: pure static reordering, pure dynamic
 With the first two configurations, each Aesop call uses the respective reordering method.
 With the third configuration, Aesop uses static reordering if the proof does not involve any metavariables (in which case static structuring always produces a perfectly structured script); otherwise it uses dynamic reordering.
 This configuration is Aesop's default.
+For each configuration and each Aesop call, we then measure the total time taken by the Aesop call and the time spent generating the script.
+Script generation includes the initial construction of the naive script and all steps of the script optimisation pipeline.
 
 Table~\ref{table:evaluation} reports, for each configuration, the average results of three runs on an AMD Ryzen~7 3700X processor.
 The variance between runs is low; e.g.\ for the static configuration, the median Aesop call takes between $168.3\millis$ and $168.9\millis$ and the median script generation takes between $36.8\millis$ and $37.1\millis$.
@@ -970,7 +999,7 @@ However, in a few cases, script generation takes much longer.
 The culprits seem to be Aesop invocations involving very expensive calls to Lean's simplifier.
 These affect script generation even in the static configuration because simplifier calls are subject to a local dynamic optimisation, so each simplifier call is re-run once during script generation.
 In the dynamic configuration, the simplifier is then re-run at least once more during dynamic reordering.
-This observation suggests that local dynamic optimisations and dynamic reordering should perhaps be disabled if the script contains expensive steps.
+This observation suggests that local dynamic optimisations and dynamic reordering should perhaps be disabled for expensive steps.
 
 \paragraph{Effectiveness of dynamic reordering}
 To evaluate the effectiveness of dynamic reordering, we build Mathlib as above, but now track the number of \emph{perfectly structured} scripts produced by static and dynamic reordering.
@@ -1024,13 +1053,18 @@ The third stage performs some syntactic post-processing.
 The evaluation shows that script generation (with either reordering algorithm) is fast enough for a large majority of scripts in practice, though it can become slow if an Aesop call involves expensive rules.
 Dynamic reordering is slightly better at structuring scripts than static reordering.
 
-A natural continuation of this work would be to simply add more optimisations.
-For example, Aesop sometimes uses the \tac{simp\_all} tactic even though \tac{simp} would suffice.
-More ambitiously, an extended optimisation pipeline could become useful for human-written scripts as well:
-using Lean might be more productive and fun if users could write functional-but-ugly proofs and the optimiser would automatically improve them.
+A natural continuation of this work would be to disentangle the optimiser from Aesop, making it available as a library for optimising arbitrary tactic scripts.
+This library could be used by any system that seeks to automatically produce human-readable tactic proofs, e.g.\ auto-formalisation tools based on large language models (LLMs).
+Perhaps an optimiser could even be applied to human-written scripts:
+using Lean might be more productive and fun if users could write functional but ugly proofs and the optimiser would automatically improve them.
+
+New use cases such as these would likely require additional optimisations.
+For example, LLMs tend to produce proofs containing irrelevant intermediate statements;
+script optimisation could conceivably be extended to remove these.
+Suggestions from the many linters available in Mathlib~\cite{vanDoorn2020} could also be automatically applied, turning them into optimisation passes.
 
 \begin{acks}
-  I am grateful to Jasmin Blanchette for his extensive comments on drafts of this paper, and to the anonymous reviewers for their very helpful suggestions.
+  I am grateful to Jasmin Blanchette for his extensive comments on drafts of this paper, and to the anonymous reviewers for many helpful suggestions.
 \end{acks}
 
 \bibliography{lit}
