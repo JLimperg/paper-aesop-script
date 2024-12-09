@@ -136,13 +136,11 @@
   Such a script can then replace the typically much slower invocation of the search tactic, or it can be used to understand and debug the search.
 
   However, at least for Aesop, naively generated scripts are highly unidiomatic.
-  For example, they use tactics that users would typically avoid; they apply these tactics in an unusual order; and they do not take advantage of Lean's constructs for structuring tactic scripts.
+  For example, they use tactics that users would typically avoid; they apply these tactics in an unusual order; and they do not use Lean's constructs for structuring tactic scripts.
 
-  To address these issues, I propose a three-step optimisation pipeline that transforms naive scripts into scripts resembling a human-written Lean proof.
-  This saves Aesop's users the tedium of performing these transformations by hand.
-  The first stage of the pipeline replaces less idiomatic tactics with more idiomatic ones, checking that the two sequences of tactics produce the same result.
+  To address these issues, I propose a three-stage optimisation pipeline that transforms naive scripts into scripts resembling a human-written Lean proof.
+  The first stage replaces less idiomatic tactics with more idiomatic ones, checking that the two sequences of tactics produce the same result.
   The second stage permutes the tactics in the script to bring them into a natural, depth-first order, which then allows us to use Lean's structuring constructs.
-  This is non-trivial if the tactics operate on goals containing metavariables, in which case certain permutations change the tactics' behaviour.
   The third stage runs some straightforward post-processing passes.
 \end{abstract}
 
