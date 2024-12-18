@@ -984,6 +984,13 @@ The following evaluation seeks to answer two questions:
 what is the runtime cost of script generation (with static or dynamic reordering) and how much more effective is dynamic reordering at producing structured scripts?
 
 \begin{table}
+  \caption{Results of the performance evaluation.
+    $\bar{A}$ is the average time taken by each Aesop call (including script generation); $A_{50}$ is the median time; $A_{95}$ the $95^{\mathrm{th}}$ percentile time; and $A_{99}$ the $99^{\mathrm{th}}$ percentile time.
+    $\bar{S}$, $S_{50}$, $S_{95}$ and $S_{99}$ are the corresponding times for script generation.
+    The top part of the table contains timings from the static, optimised dynamic and dynamic configurations across 6395 Aesop calls in Mathlib.
+    The bottom part contains corresponding timings for those 74 Aesop calls which generate proofs with metavariables.
+    All times are in milliseconds.}%
+  \label{table:evaluation}
   \centering
   \small
   \begin{tabular}{lcccc|cccc}
@@ -999,14 +1006,6 @@ what is the runtime cost of script generation (with static or dynamic reordering
     Opt.\ dyn. & 821 & 351 & 5580 & 6663 & 143 & 51 & 493 & 3579 \\
     Dynamic    & 821 & 361 & 5535 & 6844 & 143 & 53 & 497 & 3502 \\
   \end{tabular}
-  \medskip
-  \caption{Results of the performance evaluation.
-    $\bar{A}$ is the average time taken by each Aesop call (including script generation); $A_{50}$ is the median time; $A_{95}$ the $95^{\mathrm{th}}$ percentile time; and $A_{99}$ the $99^{\mathrm{th}}$ percentile time.
-    $\bar{S}$, $S_{50}$, $S_{95}$ and $S_{99}$ are the corresponding times for script generation.
-    The top part of the table contains timings from the static, optimised dynamic and dynamic configurations across 6395 Aesop calls in Mathlib.
-    The bottom part contains corresponding timings for those 74 Aesop calls which generate proofs with metavariables.
-    All times are in milliseconds.}%
-  \label{table:evaluation}
 \end{table}
 
 \paragraph{Performance}
